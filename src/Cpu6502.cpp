@@ -31,6 +31,8 @@ Cpu6502::Cpu6502(Bus* busPtr) {
 	instruction_lookup[0x4C] = { "JMP", &Cpu6502::JMP, &Cpu6502::AB0, 3 };
 	instruction_lookup[0x6C] = { "JMP", &Cpu6502::JMP, &Cpu6502::IND, 5 };
 
+	instruction_lookup[0x10] = { "BPL", &Cpu6502::BPL, &Cpu6502::REL, 2 };
+
 	instruction_lookup[0xA9] = { "LDA", &Cpu6502::LDA, &Cpu6502::IMM, 2 };
 	instruction_lookup[0xA5] = { "LDA", &Cpu6502::LDA, &Cpu6502::ZP0, 3 };
 	instruction_lookup[0xB5] = { "LDA", &Cpu6502::LDA, &Cpu6502::ZPX, 4 };
