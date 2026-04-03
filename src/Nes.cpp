@@ -22,6 +22,4 @@ void Nes::tick() {
 	}
 
 	clock++;
-
-	std::cout << "\n\n\n\n\n";
 }

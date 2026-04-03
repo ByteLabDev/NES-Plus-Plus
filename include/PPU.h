@@ -6,13 +6,14 @@ class Nes;
 class PPU {
 	public:
 		PPU(Nes* nesPtr);
-		uint8_t cycles;
-		uint8_t scanline;
+		uint16_t cycles;
+		uint16_t scanline;
 		void reset();
 		void step();
 		bool read(uint16_t addr, uint8_t& data);
 		bool write(uint16_t addr, uint16_t data);
 		uint8_t vram_read(uint16_t addr);
+		int c_count_temp = 0;
 	private:
 		// ------------------------------------
 		// ---------- MMIO Registers ----------

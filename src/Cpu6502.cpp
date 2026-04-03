@@ -61,8 +61,8 @@ uint8_t Cpu6502::step() {
 	}
 
 	uint8_t opcode = nes->bus.read(PC++);
-	std::cout << "PC: 0x" << std::hex << (int)PC << std::endl;
-	std::cout << "Opcode: 0x" << std::hex << (int)opcode << std::endl;
+	//std::cout << "PC: 0x" << std::hex << (int)PC << std::endl;
+	//std::cout << "Opcode: 0x" << std::hex << (int)opcode << std::endl;
 	Instruction& inst = instruction_lookup[opcode];
 
 	if (inst.name == "UNK" || inst.addrmode == nullptr || inst.operate == nullptr) {
@@ -73,6 +73,12 @@ uint8_t Cpu6502::step() {
 
 	uint8_t addr_cycles = (this->*inst.addrmode)();
 	uint8_t op_cycles = (this->*inst.operate)();
+
+	if (opcode == 0xAD && target_addr == 0x2002) {
+		std::cout << "[TRACE] LDA $2002 finished. Acc: " << std::hex << (int)acc
+			<< " | N-Flag: " << (int)flags.n
+			<< " | PPU Scanline: " << std::dec << nes->ppu.scanline << std::endl;
+	}
 
 	return inst.cycles + addr_cycles + op_cycles;
 }
@@ -91,6 +97,7 @@ void Cpu6502::reset() {
 
 void Cpu6502::NMI() {
 	nmi_pending = true;
+	std::cout << "[NMI TRACE] Triggered!" << std::endl;
 }
 
 void Cpu6502::handle_nmi() {
@@ -119,7 +126,7 @@ void Cpu6502::handle_nmi() {
 
 void Cpu6502::set_nz(uint8_t val) {
 	flags.z = (val == 0);
-	flags.n = (val & 0x80);
+	flags.n = (val & 0x80) ? 1 : 0;
 }
 
 // ----- Instructions -----

@@ -26,6 +26,20 @@ uint8_t PPU::vram_read(uint16_t addr) {
 }
 
 void PPU::step() {
+	//std::cout << "[PPU TRACE] Scanline: " << scanline << " Cycle: " << cycles << " VBlank: " << (int)status.flag_vblank << std::endl;
+	c_count_temp++;
+	cycles++;
+
+	if (cycles >= 341) {
+		cycles = 0;
+		scanline++;
+		int max_scanlines = (nes->region == nes->PAL) ? 312 : 262;
+
+		if (scanline >= max_scanlines) {
+			scanline = 0;
+		}
+	}
+
 	if (scanline == 241 && cycles == 1) {
 		status.flag_vblank = 1;
 		if (ctrl.vblank_nmi_enable) {
@@ -38,21 +52,10 @@ void PPU::step() {
 	if (scanline == 261 && cycles == 1) {
 		status.flag_vblank = 0;
 	}
-
-	cycles++;
-
-	if (cycles < 341) return;
-
-	cycles = 0;
-	scanline++;
-	int max_scanlines = (nes->region == nes->PAL) ? 312 : 262;
-
-	if (scanline >= max_scanlines) {
-		scanline = 0;
-	}
 }
 
 bool PPU::read(uint16_t addr, uint8_t &data) {
+	//std::cout << "READ: 0x" << std::hex << addr << std::endl;
 	uint16_t reg = addr % 8; // Mirrors every 8 bytes from $2008 to $3FFF
 	switch (reg) {
 		case 0x2:	// PPUSTATUS
@@ -80,14 +83,13 @@ bool PPU::read(uint16_t addr, uint8_t &data) {
 }
 
 bool PPU::write(uint16_t addr, uint16_t data) {
+	//std::cout << "WRITE: 0x" << std::hex << addr << std::endl;
 	uint16_t reg = addr % 8; // Mirrors every 8 bytes from $2008 to $3FFF
-
-	std::cout << "Addr: " << addr << std::endl;
 
 	switch (reg) {
 		case 0x0:	// PPUCTRL
 			ctrl.reg = data;
-			tmp_vram_addr &= !(0x0C00); // 0000 1100 0000 0000
+			tmp_vram_addr &= ~(0x0C00); // 0000 1100 0000 0000
 			tmp_vram_addr |= (data & 0b11) << 10;
 			break;
 		case 0x1:	// PPUMASK

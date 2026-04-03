@@ -21,7 +21,7 @@ int main(int argc, const char* argv[]) {
 
 	while (true) {
 		nes.tick();
-		std::this_thread::sleep_for(1ms);
+		//std::this_thread::sleep_for(1ms);
 	}
 
 	return 0;

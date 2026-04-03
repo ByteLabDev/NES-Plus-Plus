@@ -40,14 +40,14 @@ class Cpu6502 {
 		// ----- Flags -----
 		union FLAGS {
 			struct {
-				uint8_t n : 1;		// Negative
-				uint8_t v : 1;		// Overflow
-				uint8_t u : 1;		// Unused (always 1)
-				uint8_t b : 1;		// Break
-				uint8_t d : 1;		// Decimal
-				uint8_t i : 1;		// Interrupt Disable
-				uint8_t z : 1;		// Zero
-				uint8_t c : 1;		// Carry
+				uint8_t c : 1;    // Carry
+				uint8_t z : 1;    // Zero
+				uint8_t i : 1;    // Interrupt Disable
+				uint8_t d : 1;    // Decimal
+				uint8_t b : 1;    // Break
+				uint8_t u : 1;    // Unused (always 1)
+				uint8_t v : 1;    // Overflow
+				uint8_t n : 1;    // Negative
 
 			};
 			uint8_t reg;
