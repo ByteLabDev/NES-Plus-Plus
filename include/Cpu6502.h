@@ -2,11 +2,12 @@
 #include <cstdint>
 #include <fstream>
 #include <cstring>
-#include "Bus.h"
+
+class Nes;
 
 class Cpu6502 {
 	public:
-		Cpu6502(Bus* busPtr);
+		Cpu6502(Nes* nesPtr);
 
 		// Thanks to this repo: https://github.com/tucna/NES-emulator/blob/master/sources/CPU.cpp
 		struct Instruction {
@@ -17,7 +18,7 @@ class Cpu6502 {
 		};
 
 		void init();
-		void step();
+		uint8_t step();
 		void reset();
 	private:
 		uint16_t PC;    // Program Counter | Shows up to 64 kb (2^16 bytes) memory
@@ -41,8 +42,7 @@ class Cpu6502 {
 		bool flag_v = 0; // Overflow
 		bool flag_n = 0; // Negative
 
-		// ----- Modules -----
-		Bus* bus;
+		Nes* nes;
 
 		Instruction instruction_lookup[256];
 

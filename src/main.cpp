@@ -1,5 +1,6 @@
 // main.cpp
 
+#include "Nes.h"
 #include "Bus.h";
 #include "Cpu6502.h"
 #include "Cartridge.h"; // TEMP - REMOVE AFTER TESTING
@@ -9,19 +10,17 @@
 using namespace std::chrono_literals;
 
 int main(int argc, const char* argv[]) {
-	PPU ppu;
-	Bus bus(&ppu);
-	Cpu6502 cpu6502(&bus);
+	Nes nes;
 
 	Cartridge cartridge = Cartridge("C:\\Users\\adems\\Downloads\\Super Mario Bros. (World).nes");
 	cartridge.loadRom();
 
-	bus.insertCartridge(&cartridge);
+	nes.bus.insertCartridge(&cartridge);
 
-	cpu6502.reset();
+	nes.cpu6502.reset();
 
 	while (true) {
-		cpu6502.step();
+		nes.tick();
 		std::this_thread::sleep_for(1ms);
 	}
 

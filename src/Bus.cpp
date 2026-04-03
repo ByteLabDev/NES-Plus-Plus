@@ -1,9 +1,12 @@
 // https://www.nesdev.org/wiki/CPU_memory_map
 
+#include "Nes.h"
 #include "Bus.h"
+#include "Cartridge.h"
+#include "iostream"
 
-Bus::Bus(PPU* ppuPtr) {
-	ppu = ppuPtr;
+Bus::Bus(Nes* nesPtr) {
+	nes = nesPtr;
 }
 
 uint8_t Bus::read(uint16_t addr) {
@@ -17,8 +20,11 @@ uint8_t Bus::read(uint16_t addr) {
 	// PPU Registers:			$2000 – $3FFF (8192 - 16383)
 	// Non-mirror range:		$2000 – $2007 (8192 - 8200)
 	if (addr >= 0x2000 && addr <= 0x3FFF) {
-		uint16_t w_addr = (addr - 0x2000) % 8; // Wrap every 8 steps
-		// TODO: Return PPU Registers
+		uint8_t data = 0;
+		if (nes != nullptr && nes->ppu.read(addr, data)) {
+			std::cout << "Reading from PPU" << std::endl;
+			return data;
+		}
 		return 0;
 	}
 

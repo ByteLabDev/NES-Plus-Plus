@@ -1,8 +1,18 @@
 #pragma once
 #include <cstdint>
 
+class Nes;
+
 class PPU {
 	public:
+		PPU(Nes* nesPtr);
+		uint8_t cycles;
+		uint8_t scanline;
+		void reset();
+		void step();
+		bool read(uint16_t addr, uint8_t& data);
+		bool write(uint16_t addr, uint16_t data);
+		uint8_t vram_read(uint16_t addr);
 	private:
 		// ------------------------------------
 		// ---------- MMIO Registers ----------
@@ -34,7 +44,7 @@ class PPU {
 				uint8_t render_sp : 1;			// 1: Enable sprite rendering
 				uint8_t emph_r : 1;				// Emphasize red (green on PAL/Dendy)
 				uint8_t emph_g : 1;				// Emphasize green (red on PAL/Dendy)
-				uint8_t emph_b : 1				// Emphasize blue
+				uint8_t emph_b : 1;				// Emphasize blue
 			};
 			uint8_t reg;
 		};
@@ -45,7 +55,7 @@ class PPU {
 				uint8_t unused : 5;
 				uint8_t flag_sp_overflow : 1;	// Sprite overflow flag
 				uint8_t flag_sp_0_hit : 1;		// Sprite 0 hit flag
-				uint8_t flag_blank : 1;			// Vblank flag, cleared on read. Unreliable, see wiki: https://www.nesdev.org/wiki/PPU_registers#PPUSTATUS_-_Rendering_events_($2002_read)
+				uint8_t flag_vblank : 1;			// Vblank flag, cleared on read. Unreliable, see wiki: https://www.nesdev.org/wiki/PPU_registers#PPUSTATUS_-_Rendering_events_($2002_read)
 			};
 			uint8_t reg;
 		};
@@ -64,4 +74,6 @@ class PPU {
 
 		uint8_t		oam_addr;			// Sprite address
 		uint8_t		oam_data[256];		// Sprite memory
+
+		Nes *nes;
 };

@@ -2,7 +2,9 @@
 // https://www.nesdev.org/wiki/CPU
 // https://www.masswerk.at/6502/6502_instruction_set.html
 
+#include "Nes.h"
 #include "Cpu6502.h"
+#include "Bus.h"
 #include <stdio.h>
 #include <iostream>
 #include <vector>
@@ -10,8 +12,8 @@
 #include <algorithm>
 #include <array>
 
-Cpu6502::Cpu6502(Bus* busPtr) {
-	bus = busPtr;
+Cpu6502::Cpu6502(Nes* nesPtr) {
+	nes = nesPtr;
 
 	// TEMP: Fill the instructions with blank data
 	for (int i = 0; i < 256; i++) {
@@ -26,7 +28,7 @@ Cpu6502::Cpu6502(Bus* busPtr) {
 	instruction_lookup[0xD8] = { "CLD", &Cpu6502::CLD, &Cpu6502::IMP, 2 };
 	instruction_lookup[0x8D] = { "STA", &Cpu6502::STA, &Cpu6502::AB0, 4 };
 
-	instruction_lookup[0x9A] = { "TXS", &Cpu6502::STA, &Cpu6502::IMP, 2 };
+	instruction_lookup[0x9A] = { "TXS", &Cpu6502::TXS, &Cpu6502::IMP, 2 };
 
 	instruction_lookup[0x4C] = { "JMP", &Cpu6502::JMP, &Cpu6502::AB0, 3 };
 	instruction_lookup[0x6C] = { "JMP", &Cpu6502::JMP, &Cpu6502::IND, 5 };
@@ -52,8 +54,8 @@ Cpu6502::Cpu6502(Bus* busPtr) {
 void Cpu6502::init() {
 }
 
-void Cpu6502::step() {
-	uint8_t opcode = bus->read(PC++);
+uint8_t Cpu6502::step() {
+	uint8_t opcode = nes->bus.read(PC++);
 	std::cout << "PC: 0x" << std::hex << (int)PC << std::endl;
 	std::cout << "Opcode: 0x" << std::hex << (int)opcode << std::endl;
 	Instruction& inst = instruction_lookup[opcode];
@@ -61,16 +63,18 @@ void Cpu6502::step() {
 	if (inst.name == "UNK" || inst.addrmode == nullptr || inst.operate == nullptr) {
 		std::cout << "Unimplemented Opcode: 0x" << std::hex << (int)opcode << std::endl;
 		PC--;
-		return;
+		return 0;
 	}
 
-	(this->*inst.addrmode)();
-	(this->*inst.operate)();
+	uint8_t addr_cycles = (this->*inst.addrmode)();
+	uint8_t op_cycles = (this->*inst.operate)();
+
+	return inst.cycles + addr_cycles + op_cycles;
 }
 
 void Cpu6502::reset() {
-	uint8_t lo = bus->read(0xFFFC);
-	uint8_t hi = bus->read(0xFFFD);
+	uint8_t lo = nes->bus.read(0xFFFC);
+	uint8_t hi = nes->bus.read(0xFFFD);
 
 	acc = 0;
 	x_ind = 0;
@@ -92,7 +96,7 @@ uint8_t Cpu6502::NOP() {
 }
 
 uint8_t Cpu6502::JMP() {
-	PC = bus->read(target_addr);
+	PC = target_addr;
 	return 0;
 }
 
@@ -117,22 +121,22 @@ uint8_t Cpu6502::TXS() {
 }
 
 uint8_t Cpu6502::LDX() {
-	x_ind = bus->read(target_addr);
+	x_ind = nes->bus.read(target_addr);
 	return 0;
 }
 
 uint8_t Cpu6502::STA() {
-	bus->write(target_addr, acc);
+	nes->bus.write(target_addr, acc);
 	return 0;
 }
 
 uint8_t Cpu6502::STX() {
-	bus->write(target_addr, x_ind);
+	nes->bus.write(target_addr, x_ind);
 	return 0;
 }
 
 uint8_t Cpu6502::STY() {
-	bus->write(target_addr, y_ind);
+	nes->bus.write(target_addr, y_ind);
 	return 0;
 }
 
@@ -151,7 +155,7 @@ uint8_t Cpu6502::BRK() {
 }
 
 uint8_t Cpu6502::CPY() {
-	uint8_t M = bus->read(target_addr);
+	uint8_t M = nes->bus.read(target_addr);
 	uint8_t result = y_ind - M;
 
 	// NVIB DIZC
@@ -163,7 +167,7 @@ uint8_t Cpu6502::CPY() {
 }
 
 uint8_t Cpu6502::LDA() {
-	acc = bus->read(target_addr);
+	acc = nes->bus.read(target_addr);
 	flag_z = (acc == 0);
 	flag_n = (acc & 0x80);
 	return 0;
@@ -191,7 +195,7 @@ uint8_t Cpu6502::IMM() {
 
 // Zero Page
 uint8_t Cpu6502::ZP0() {
-	uint8_t addr = bus->read(PC);
+	uint8_t addr = nes->bus.read(PC);
 	PC++;
 	target_addr = (uint16_t)addr;
 	return 0;
@@ -199,7 +203,7 @@ uint8_t Cpu6502::ZP0() {
 
 // Zero Page Indexed (x)
 uint8_t Cpu6502::ZPX() {
-	uint8_t addr = bus->read(PC);
+	uint8_t addr = nes->bus.read(PC);
 	PC++;
 	target_addr = (uint16_t)(uint8_t)(addr + x_ind);
 	return 0;
@@ -207,7 +211,7 @@ uint8_t Cpu6502::ZPX() {
 
 // Zero Page Indexed (y)
 uint8_t Cpu6502::ZPY() {
-	uint8_t addr = bus->read(PC);
+	uint8_t addr = nes->bus.read(PC);
 	PC++;
 	target_addr = (uint16_t)(uint8_t)(addr + y_ind);
 	return 0;
@@ -216,9 +220,9 @@ uint8_t Cpu6502::ZPY() {
 // Absolute
 uint8_t Cpu6502::AB0() {
 	// Fetches the value from a 16-bit address anywhere in memory.
-	uint8_t lo = bus->read(PC);
+	uint8_t lo = nes->bus.read(PC);
 	PC++;
-	uint8_t hi = bus->read(PC);
+	uint8_t hi = nes->bus.read(PC);
 	PC++;
 
 	target_addr = (hi << 8) | lo;
@@ -228,9 +232,9 @@ uint8_t Cpu6502::AB0() {
 // Absolute Indexed (x)
 uint8_t Cpu6502::ABX() {
 	// Fetches the value from a 16-bit address anywhere in memory.
-	uint8_t lo = bus->read(PC);
+	uint8_t lo = nes->bus.read(PC);
 	PC++;
-	uint8_t hi = bus->read(PC);
+	uint8_t hi = nes->bus.read(PC);
 	PC++;
 
 	uint16_t addr = (hi << 8) | lo;
@@ -245,9 +249,9 @@ uint8_t Cpu6502::ABX() {
 // Absolute Indexed (y)
 uint8_t Cpu6502::ABY() {
 	// Fetches the value from a 16-bit address anywhere in memory.
-	uint8_t lo = bus->read(PC);
+	uint8_t lo = nes->bus.read(PC);
 	PC++;
-	uint8_t hi = bus->read(PC);
+	uint8_t hi = nes->bus.read(PC);
 	PC++;
 
 	uint16_t addr = (hi << 8) | lo;
@@ -261,7 +265,7 @@ uint8_t Cpu6502::ABY() {
 
 // Relative
 uint8_t Cpu6502::REL() {
-	uint8_t u_offset = bus->read(PC);
+	uint8_t u_offset = nes->bus.read(PC);
 	int8_t offset = (int8_t)(u_offset);
 	PC++;
 
@@ -272,9 +276,9 @@ uint8_t Cpu6502::REL() {
 
 // Indirect
 uint8_t Cpu6502::IND() {
-	uint8_t lo = bus->read(PC);
+	uint8_t lo = nes->bus.read(PC);
 	PC++;
-	uint8_t hi = bus->read(PC);
+	uint8_t hi = nes->bus.read(PC);
 	PC++;
 
 	uint16_t ptr = (hi << 8) | lo;
@@ -291,8 +295,8 @@ uint8_t Cpu6502::IND() {
 		ptr_hi_addr = ptr + 1;
 	}
 
-	uint16_t target_lo = bus->read(ptr);
-	uint16_t target_hi = bus->read(ptr_hi_addr);
+	uint16_t target_lo = nes->bus.read(ptr);
+	uint16_t target_hi = nes->bus.read(ptr_hi_addr);
 
 
 	target_addr = (target_hi << 8) | target_lo;
@@ -302,12 +306,12 @@ uint8_t Cpu6502::IND() {
 
 // Indirect Indexed (x)
 uint8_t Cpu6502::IZX() {
-	uint8_t base = bus->read(PC++);
+	uint8_t base = nes->bus.read(PC++);
 	uint8_t lo_addr = (uint8_t)(base + x_ind);
 	uint8_t hi_addr = (uint8_t)(base + x_ind + 1);
 
-	uint8_t lo = bus->read((uint16_t)lo_addr);
-	uint8_t hi = bus->read((uint16_t)hi_addr);
+	uint8_t lo = nes->bus.read((uint16_t)lo_addr);
+	uint8_t hi = nes->bus.read((uint16_t)hi_addr);
 
 	target_addr = (hi << 8) | lo;
 
@@ -316,10 +320,10 @@ uint8_t Cpu6502::IZX() {
 
 // Indirect Indexed (y)
 uint8_t Cpu6502::IZY() {
-	uint8_t ial = bus->read(PC++);
+	uint8_t ial = nes->bus.read(PC++);
 
-	uint8_t lo = bus->read((uint16_t)ial);
-	uint8_t hi = bus->read((uint16_t)(uint8_t)(ial + 1)); // Apply (uint8_t) for wrapping
+	uint8_t lo = nes->bus.read((uint16_t)ial);
+	uint8_t hi = nes->bus.read((uint16_t)(uint8_t)(ial + 1)); // Apply (uint8_t) for wrapping
 
 	uint16_t base_addr = (hi << 8) | lo;
 	target_addr = base_addr + y_ind;
