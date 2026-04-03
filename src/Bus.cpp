@@ -22,7 +22,6 @@ uint8_t Bus::read(uint16_t addr) {
 	if (addr >= 0x2000 && addr <= 0x3FFF) {
 		uint8_t data = 0;
 		if (nes != nullptr && nes->ppu.read(addr, data)) {
-			std::cout << "Reading from PPU" << std::endl;
 			return data;
 		}
 		return 0;

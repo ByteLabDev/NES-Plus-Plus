@@ -55,11 +55,8 @@ void PPU::step() {
 bool PPU::read(uint16_t addr, uint8_t &data) {
 	uint16_t reg = addr % 8; // Mirrors every 8 bytes from $2008 to $3FFF
 
-	std::cout << "Register:" << reg << std::endl;
-
 	switch (reg) {
 		case 0x2:	// PPUSTATUS
-			std::cout << "Reading PPUSTATUS:" << reg << std::endl;
 			data = status.reg;
 			status.flag_vblank = 0;
 			addr_latch = false;

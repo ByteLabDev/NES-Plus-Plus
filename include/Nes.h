@@ -18,8 +18,6 @@ class Nes {
 
 		void set_region(Region region);
 
-		float ppu_accumulator;
-
 		Nes();
 
 		void init();
@@ -30,6 +28,6 @@ class Nes {
 		Bus bus;
 
 	private:
-		uint8_t cycles_remaining = 0;
 		uint8_t clock = 0;
+		float ppu_accumulator = 0;
 };

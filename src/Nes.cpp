@@ -11,19 +11,13 @@ void Nes::set_region(Region region) {
 }
 
 void Nes::tick() {
-	if (cycles_remaining == 0) {
-		cycles_remaining = cpu6502.step();
-	}
+	uint8_t cycles = cpu6502.step();
 
-	ppu_accumulator += ppu_ratio;
+	ppu_accumulator += cycles * ppu_ratio;
 
 	while (ppu_accumulator >= 1.0f) {
 		ppu.step();
 		ppu_accumulator -= 1;
-	}
-
-	if (cycles_remaining > 0) {
-		cycles_remaining--;
 	}
 
 	clock++;

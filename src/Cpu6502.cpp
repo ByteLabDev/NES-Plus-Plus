@@ -55,20 +55,20 @@ void Cpu6502::init() {
 }
 
 uint8_t Cpu6502::step() {
+	if (nmi_pending) {
+		handle_nmi();
+		return 7;
+	}
+
 	uint8_t opcode = nes->bus.read(PC++);
-	std::cout << "PC: 0x" << std::hex << (int)PC << std::endl;
-	std::cout << "Opcode: 0x" << std::hex << (int)opcode << std::endl;
+	//std::cout << "PC: 0x" << std::hex << (int)PC << std::endl;
+	//std::cout << "Opcode: 0x" << std::hex << (int)opcode << std::endl;
 	Instruction& inst = instruction_lookup[opcode];
 
 	if (inst.name == "UNK" || inst.addrmode == nullptr || inst.operate == nullptr) {
 		std::cout << "Unimplemented Opcode: 0x" << std::hex << (int)opcode << std::endl;
 		PC--;
 		return 0;
-	}
-
-	if (nmi_pending) {
-		handle_nmi();
-		return 7;
 	}
 
 	uint8_t addr_cycles = (this->*inst.addrmode)();
@@ -102,6 +102,7 @@ void Cpu6502::handle_nmi() {
 
 	FLAGS new_status = flags;
 	new_status.b = 0;
+	new_status.u = 1;
 
 	nes->bus.write(0x100 + SP--, new_status.reg);
 
