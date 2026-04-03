@@ -80,17 +80,21 @@ bool PPU::read(uint16_t addr, uint8_t &data) {
 }
 
 bool PPU::write(uint16_t addr, uint16_t data) {
-	data = 0x0;
 	uint16_t reg = addr % 8; // Mirrors every 8 bytes from $2008 to $3FFF
+
+	std::cout << "Addr: " << addr << std::endl;
 
 	switch (reg) {
 		case 0x0:	// PPUCTRL
-			
+			ctrl.reg = data;
+			tmp_vram_addr &= !(0x0C00); // 0000 1100 0000 0000
+			tmp_vram_addr |= (data & 0b11) << 10;
 			break;
 		case 0x1:	// PPUMASK
+			mask.reg = data;
 			break;
 		case 0x3:	// OAMADDR
-			data = oam_addr;
+			oam_addr = data;
 			break;
 		case 0x4:	// OAMDATA
 			break;
