@@ -26,18 +26,29 @@ uint8_t PPU::vram_read(uint16_t addr) {
 }
 
 void PPU::step() {
+	if (scanline == 241 && cycles == 1) {
+		status.flag_vblank = 1;
+		if (ctrl.vblank_nmi_enable) {
+			// https://www.nesdev.org/wiki/PPU_registers#Vblank_NMI
+			// "Enabling NMI in PPUCTRL causes the NMI handler to be called at the start of vblank (scanline 241, dot 1)."
+			nes->cpu6502.NMI();
+		}
+	}
+
+	if (scanline == 261 && cycles == 1) {
+		status.flag_vblank = 0;
+	}
+
 	cycles++;
 
 	if (cycles < 341) return;
 
 	cycles = 0;
 	scanline++;
+	int max_scanlines = (nes->region == nes->PAL) ? 312 : 262;
 
-	if (scanline == 241) {
-		status.flag_vblank = 1;
-		if (ctrl.vblank_nmi_enable) {
-
-		}
+	if (scanline >= max_scanlines) {
+		scanline = 0;
 	}
 }
 

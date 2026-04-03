@@ -66,6 +66,11 @@ uint8_t Cpu6502::step() {
 		return 0;
 	}
 
+	if (nmi_pending) {
+		handle_nmi();
+		return 7;
+	}
+
 	uint8_t addr_cycles = (this->*inst.addrmode)();
 	uint8_t op_cycles = (this->*inst.operate)();
 
@@ -81,15 +86,37 @@ void Cpu6502::reset() {
 	y_ind = 0;
 	PC = (hi << 8) | lo;
 	SP = 0xFD;
-	flag_n = 0;
-	flag_v = 0;
-	flag_1 = 0;
-	flag_b = 0;
-	flag_d = 0;
-	flag_i = 1;
-	flag_z = 0;
-	flag_c = 0;
+	flags = { 0b00100000 };
 }
+
+void Cpu6502::NMI() {
+	nmi_pending = true;
+}
+
+void Cpu6502::handle_nmi() {
+	// https://www.nesdev.org/wiki/NMI
+	uint8_t hi = (uint8_t)((PC >> 8) & 0x00FF);
+	uint8_t lo = (uint8_t)((PC) & 0x00FF);
+	nes->bus.write(0x100 + SP--, hi);
+	nes->bus.write(0x100 + SP--, lo);
+
+	FLAGS new_status = flags;
+	new_status.b = 0;
+
+	nes->bus.write(0x100 + SP--, new_status.reg);
+
+	flags.i = 1;
+
+	// Jump to NMI
+	uint8_t vector_lo = nes->bus.read(0xFFFA);
+	uint8_t vector_hi = nes->bus.read(0xFFFB);
+
+	PC = (vector_hi << 8) | vector_lo;
+
+	nmi_pending = false;
+}
+
+// ----- Instructions -----
 
 uint8_t Cpu6502::NOP() {
 	return 0;
@@ -101,7 +128,7 @@ uint8_t Cpu6502::JMP() {
 }
 
 uint8_t Cpu6502::BPL() {
-	if (flag_n == 0) {
+	if (flags.n == 0) {
 		uint8_t cycles = 1; // Branching takes at least 1 extra cycle
 		
 		if ((PC & 0xFF00) != (target_addr & 0xFF00)) {
@@ -141,12 +168,12 @@ uint8_t Cpu6502::STY() {
 }
 
 uint8_t Cpu6502::SEI() {
-	flag_i = 1;
+	flags.i = 1;
 	return 0;
 }
 
 uint8_t Cpu6502::CLD() {
-	flag_d = 0;
+	flags.d = 0;
 	return 0;
 }
 
@@ -159,17 +186,17 @@ uint8_t Cpu6502::CPY() {
 	uint8_t result = y_ind - M;
 
 	// NVIB DIZC
-	flag_c = y_ind >= M;
-	flag_z = y_ind == M;
-	flag_n = (result & 0x80); // 7th bit
+	flags.c = y_ind >= M;
+	flags.z = y_ind == M;
+	flags.n = (result & 0x80); // 7th bit
 
 	return 0;
 }
 
 uint8_t Cpu6502::LDA() {
 	acc = nes->bus.read(target_addr);
-	flag_z = (acc == 0);
-	flag_n = (acc & 0x80);
+	flags.z = (acc == 0);
+	flags.n = (acc & 0x80);
 	return 0;
 }
 

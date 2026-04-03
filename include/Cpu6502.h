@@ -19,7 +19,12 @@ class Cpu6502 {
 
 		void init();
 		uint8_t step();
+		
+		// ----- Interrupts -----
 		void reset();
+		void IRQ();
+		void NMI();
+		void handle_nmi();
 	private:
 		uint16_t PC;    // Program Counter | Shows up to 64 kb (2^16 bytes) memory
 		uint8_t SP;     // Stack Pointer
@@ -33,16 +38,26 @@ class Cpu6502 {
 		uint16_t target_addr;
 
 		// ----- Flags -----
-		bool flag_c = 0; // Carry
-		bool flag_z = 0; // Zero
-		bool flag_i = 0; // Interrupt Disable
-		bool flag_d = 0; // Decimal
-		bool flag_b = 0; // Break
-		bool flag_1 = 1; // Unused (always 1)
-		bool flag_v = 0; // Overflow
-		bool flag_n = 0; // Negative
+		union FLAGS {
+			struct {
+				uint8_t n : 1;		// Negative
+				uint8_t v : 1;		// Overflow
+				uint8_t u : 1;		// Unused (always 1)
+				uint8_t b : 1;		// Break
+				uint8_t d : 1;		// Decimal
+				uint8_t i : 1;		// Interrupt Disable
+				uint8_t z : 1;		// Zero
+				uint8_t c : 1;		// Carry
+
+			};
+			uint8_t reg;
+		};
+
+		FLAGS flags{ 0b00100000 };
 
 		Nes* nes;
+
+		bool nmi_pending = false;
 
 		Instruction instruction_lookup[256];
 
