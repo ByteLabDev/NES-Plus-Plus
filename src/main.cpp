@@ -9,7 +9,8 @@
 using namespace std::chrono_literals;
 
 int main(int argc, const char* argv[]) {
-	Bus bus;
+	PPU ppu;
+	Bus bus(&ppu);
 	Cpu6502 cpu6502(&bus);
 
 	Cartridge cartridge = Cartridge("C:\\Users\\adems\\Downloads\\Super Mario Bros. (World).nes");

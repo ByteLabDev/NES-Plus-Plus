@@ -2,8 +2,8 @@
 
 #include "Bus.h"
 
-Bus::Bus() {
-
+Bus::Bus(PPU* ppuPtr) {
+	ppu = ppuPtr;
 }
 
 uint8_t Bus::read(uint16_t addr) {
