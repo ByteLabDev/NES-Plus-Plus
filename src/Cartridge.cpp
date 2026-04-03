@@ -6,14 +6,16 @@ Cartridge::Cartridge(const std::string& fileName) {
 }
 
 bool Cartridge::read(uint16_t addr, uint8_t& data) {
-	// Map 0x8000–0xFFFF to 0x0000-0x7FFF
-	uint16_t mapped_addr = addr - 0x8000;
+	if (addr >= 0x8000) {
+		// prgRom.size() is usually 16384 or 32768.
+		// Subtracting 1 gives us a bitmask (0x3FFF or 0x7FFF).
+		uint16_t mask = prgRom.size() - 1;
 
-	// Handle mirroring. 1 bank = 16kb, 2 banks = 32kb
-	uint16_t mask = (prgRom.size() > 16384) ? 0x7FFF : 0x3FFF;
-
-	data = prgRom[mapped_addr & mask];
-    return false;
+		// This maps 0x8000-0xFFFF directly into the 0x0000-size range
+		data = prgRom[addr & mask];
+		return true;
+	}
+	return false;
 }
 
 bool Cartridge::loadRom(const std::string& filename) {

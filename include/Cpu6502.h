@@ -8,7 +8,7 @@ class Cpu6502 {
 	public:
 		Cpu6502(Bus* busPtr);
 
-		// Thanks to this repo: https://github.com/tucna/NES-emulator/blob/master/sources/CPU.h
+		// Thanks to this repo: https://github.com/tucna/NES-emulator/blob/master/sources/CPU.cpp
 		struct Instruction {
 			std::string name;
 			uint8_t(Cpu6502::* operate)(void);
@@ -19,27 +19,6 @@ class Cpu6502 {
 		void init();
 		void step();
 		void reset();
-
-		// ----- Opcodes -----
-		uint8_t NOP();
-		uint8_t LDA();
-		uint8_t LDX();
-		uint8_t LDY();
-		uint8_t STA();
-		uint8_t STX();
-		uint8_t STY();
-		uint8_t JMP();
-		uint8_t BNE();
-		uint8_t BEQ();
-		uint8_t CEC();
-		uint8_t CLC();
-		uint8_t ADC();
-		uint8_t INX();
-		uint8_t DEX();
-		uint8_t BRK();
-
-		// ----- Addressing Modes -----
-		uint8_t IMP();
 	private:
 		uint16_t PC;    // Program Counter | Shows up to 64 kb (2^16 bytes) memory
 		uint8_t SP;     // Stack Pointer
@@ -50,8 +29,50 @@ class Cpu6502 {
 		uint8_t y_ind;  // Y Index
 		uint8_t stat;   // Status
 
+		uint16_t target_addr;
+
+		// ----- Flags -----
+		bool flag_c = 0; // Carry
+		bool flag_z = 0; // Zero
+		bool flag_i = 0; // Interrupt Disable
+		bool flag_d = 0; // Decimal
+		bool flag_b = 0; // Break
+		bool flag_1 = 1; // Unused (always 1)
+		bool flag_v = 0; // Overflow
+		bool flag_n = 0; // Negative
+
 		// ----- Modules -----
 		Bus* bus;
 
 		Instruction instruction_lookup[256];
+
+		// ----- Opcodes -----
+		uint8_t NOP();
+		uint8_t LDA();
+		uint8_t LDX();
+		uint8_t LDY();
+		uint8_t STA();
+		uint8_t STX();
+		uint8_t STY();
+		uint8_t SEI();
+		uint8_t JMP();
+		uint8_t BNE();
+		uint8_t BEQ();
+		uint8_t CEC();
+		uint8_t CLC();
+		uint8_t CLD();
+		uint8_t ADC();
+		uint8_t INX();
+		uint8_t DEX();
+		uint8_t BRK();
+		uint8_t CPY();
+		uint8_t TXS();
+		uint8_t BPL();
+
+		// ----- Addressing Modes -----
+		uint8_t IMP();	uint8_t ACC();	uint8_t IMM();
+		uint8_t ZP0();	uint8_t ZPX();	uint8_t ZPY();
+		uint8_t AB0();	uint8_t ABX();	uint8_t ABY();
+		uint8_t REL();
+		uint8_t IND();	uint8_t IZX();	uint8_t IZY();
 };

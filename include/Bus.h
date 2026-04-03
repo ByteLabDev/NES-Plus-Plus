@@ -6,7 +6,7 @@
 
 class Bus {
 	private:
-		std::array<uint8_t, 2048> wram;		// Working Memory (2kb = 2^11b)
+		std::array<uint8_t, 2048> wram = {};		// Working Memory (2kb = 2^11b)
 		Cartridge* cartridge;
 	public:
 		Bus();

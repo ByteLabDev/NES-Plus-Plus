@@ -34,6 +34,15 @@ uint8_t Bus::read(uint16_t addr) {
 		return 0;
 	}
 
+	// Disabled APU, I/O Reg:	$4020–$FFFF (16416 - 65535)
+	if (addr >= 0x4020 && addr <= 0xFFFF) {
+		// APU and I/O functionality that is normally disabled. See CPU Test Mode.
+		uint8_t data = 0;
+		if (cartridge != nullptr && cartridge->read(addr, data)) {
+			return data;
+		}
+	}
+
 	return 0;
 }
 
