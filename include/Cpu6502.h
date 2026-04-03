@@ -61,6 +61,8 @@ class Cpu6502 {
 
 		Instruction instruction_lookup[256];
 
+		void set_nz(uint8_t val); // Helper function
+
 		// ----- Opcodes -----
 		uint8_t NOP();
 		uint8_t LDA();

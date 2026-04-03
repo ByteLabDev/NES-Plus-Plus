@@ -20,8 +20,8 @@ Cpu6502::Cpu6502(Nes* nesPtr) {
 		instruction_lookup[i] = { "UNK", &Cpu6502::NOP, &Cpu6502::IMP, 2 };
 	}
 
-	instruction_lookup[0x00] = { "BRK", &Cpu6502::BRK, &Cpu6502::IMP, 7 };
-	instruction_lookup[0xE2] = { "NOP", &Cpu6502::BRK, &Cpu6502::IMP, 2 };
+	//instruction_lookup[0x00] = { "BRK", &Cpu6502::BRK, &Cpu6502::IMP, 7 };
+	instruction_lookup[0xE2] = { "NOP", &Cpu6502::NOP, &Cpu6502::IMP, 2 };
 
 	instruction_lookup[0xCC] = { "CPY", &Cpu6502::CPY, &Cpu6502::AB0, 4 };
 	instruction_lookup[0x78] = { "SEI", &Cpu6502::SEI, &Cpu6502::IMP, 2 };
@@ -61,8 +61,8 @@ uint8_t Cpu6502::step() {
 	}
 
 	uint8_t opcode = nes->bus.read(PC++);
-	//std::cout << "PC: 0x" << std::hex << (int)PC << std::endl;
-	//std::cout << "Opcode: 0x" << std::hex << (int)opcode << std::endl;
+	std::cout << "PC: 0x" << std::hex << (int)PC << std::endl;
+	std::cout << "Opcode: 0x" << std::hex << (int)opcode << std::endl;
 	Instruction& inst = instruction_lookup[opcode];
 
 	if (inst.name == "UNK" || inst.addrmode == nullptr || inst.operate == nullptr) {
@@ -117,6 +117,11 @@ void Cpu6502::handle_nmi() {
 	nmi_pending = false;
 }
 
+void Cpu6502::set_nz(uint8_t val) {
+	flags.z = (val == 0);
+	flags.n = (val & 0x80);
+}
+
 // ----- Instructions -----
 
 uint8_t Cpu6502::NOP() {
@@ -129,18 +134,16 @@ uint8_t Cpu6502::JMP() {
 }
 
 uint8_t Cpu6502::BPL() {
-	if (flags.n == 0) {
-		uint8_t cycles = 1; // Branching takes at least 1 extra cycle
-		
-		if ((PC & 0xFF00) != (target_addr & 0xFF00)) {
-			cycles++;
-		}
+	if (flags.n != 0) return 0;
 
-		PC = target_addr;
-		return cycles;
+	uint8_t cycles = 1; // Branching takes at least 1 extra cycle
+		
+	if ((PC & 0xFF00) != (target_addr & 0xFF00)) {
+		cycles++;
 	}
 
-	return 0;
+	PC = target_addr;
+	return cycles;
 }
 
 uint8_t Cpu6502::TXS() {
@@ -150,6 +153,7 @@ uint8_t Cpu6502::TXS() {
 
 uint8_t Cpu6502::LDX() {
 	x_ind = nes->bus.read(target_addr);
+	set_nz(x_ind);
 	return 0;
 }
 
@@ -178,9 +182,9 @@ uint8_t Cpu6502::CLD() {
 	return 0;
 }
 
-uint8_t Cpu6502::BRK() {
-	return 0;
-}
+//uint8_t Cpu6502::BRK() {
+//	return 0;
+//}
 
 uint8_t Cpu6502::CPY() {
 	uint8_t M = nes->bus.read(target_addr);
@@ -196,8 +200,7 @@ uint8_t Cpu6502::CPY() {
 
 uint8_t Cpu6502::LDA() {
 	acc = nes->bus.read(target_addr);
-	flags.z = (acc == 0);
-	flags.n = (acc & 0x80);
+	set_nz(acc);
 	return 0;
 }
 

@@ -61,19 +61,19 @@ class PPU {
 		};
 
 		// PPUADDR - VRAM address ($2006 write)
-		PPUCTRL		ctrl;				// $2000
-		PPUMASK		mask;				// $2001
-		PPUSTATUS	status;				// $2002
+		PPUCTRL		ctrl{ 0x0 };			// $2000
+		PPUMASK		mask{ 0x0 };			// $2001
+		PPUSTATUS	status{ 0x0 };			// $2002
 
-		uint16_t	vram_addr;			// v register (Current VRAM address)
-		uint16_t	tmp_vram_addr;		// t register (Temp VRAM address)
-		uint8_t		fine_x;				// 3-bit fine X scroll
-		bool		addr_latch;			// w register (Write toggle)
+		uint16_t	vram_addr;				// v register (Current VRAM address)
+		uint16_t	tmp_vram_addr;			// t register (Temp VRAM address)
+		uint8_t		fine_x;					// 3-bit fine X scroll
+		bool		addr_latch;				// w register (Write toggle)
 
-		uint8_t		vram_read_buffer;	// Delayed read buffer for $2007
+		uint8_t		vram_read_buffer;		// Delayed read buffer for $2007
 
-		uint8_t		oam_addr;			// Sprite address
-		uint8_t		oam_data[256];		// Sprite memory
+		uint8_t		oam_addr;				// Sprite address
+		uint8_t		oam_data[256];			// Sprite memory
 
 		Nes *nes;
 };

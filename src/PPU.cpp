@@ -54,7 +54,6 @@ void PPU::step() {
 
 bool PPU::read(uint16_t addr, uint8_t &data) {
 	uint16_t reg = addr % 8; // Mirrors every 8 bytes from $2008 to $3FFF
-
 	switch (reg) {
 		case 0x2:	// PPUSTATUS
 			data = status.reg;
@@ -86,6 +85,7 @@ bool PPU::write(uint16_t addr, uint16_t data) {
 
 	switch (reg) {
 		case 0x0:	// PPUCTRL
+			
 			break;
 		case 0x1:	// PPUMASK
 			break;

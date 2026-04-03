@@ -12,7 +12,7 @@ using namespace std::chrono_literals;
 int main(int argc, const char* argv[]) {
 	Nes nes;
 
-	Cartridge cartridge = Cartridge("C:\\Users\\adems\\Downloads\\Super Mario Bros. (World).nes");
+	Cartridge cartridge = Cartridge("C:\\Users\\adems\\Downloads\\Bomberman.nes");
 	cartridge.loadRom();
 
 	nes.bus.insertCartridge(&cartridge);
