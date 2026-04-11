@@ -23,16 +23,34 @@ Cpu6502::Cpu6502(Nes* nesPtr) {
 	//instruction_lookup[0x00] = { "BRK", &Cpu6502::BRK, &Cpu6502::IMP, 7 };
 	instruction_lookup[0xE2] = { "NOP", &Cpu6502::NOP, &Cpu6502::IMP, 2 };
 
+	instruction_lookup[0xE0] = { "CPX", &Cpu6502::CPX, &Cpu6502::IMM, 2 };
+	instruction_lookup[0xE4] = { "CPX", &Cpu6502::CPX, &Cpu6502::ZP0, 3 };
+	instruction_lookup[0xEC] = { "CPX", &Cpu6502::CPX, &Cpu6502::AB0, 4 };
+
+	instruction_lookup[0xC0] = { "CPY", &Cpu6502::CPY, &Cpu6502::IMM, 2 };
+	instruction_lookup[0xC4] = { "CPY", &Cpu6502::CPY, &Cpu6502::ZP0, 3 };
 	instruction_lookup[0xCC] = { "CPY", &Cpu6502::CPY, &Cpu6502::AB0, 4 };
+
 	instruction_lookup[0x78] = { "SEI", &Cpu6502::SEI, &Cpu6502::IMP, 2 };
 	instruction_lookup[0xD8] = { "CLD", &Cpu6502::CLD, &Cpu6502::IMP, 2 };
+
+	instruction_lookup[0x85] = { "STA", &Cpu6502::STA, &Cpu6502::ZP0, 3 };
+	instruction_lookup[0x95] = { "STA", &Cpu6502::STA, &Cpu6502::ZPX, 4 };
 	instruction_lookup[0x8D] = { "STA", &Cpu6502::STA, &Cpu6502::AB0, 4 };
+	instruction_lookup[0x9D] = { "STA", &Cpu6502::STA, &Cpu6502::ABX, 5 };
+	instruction_lookup[0x99] = { "STA", &Cpu6502::STA, &Cpu6502::ABY, 5 };
+	instruction_lookup[0x81] = { "STA", &Cpu6502::STA, &Cpu6502::INX, 6 };
+	instruction_lookup[0x91] = { "STA", &Cpu6502::STA, &Cpu6502::INY, 6 };
 
 	instruction_lookup[0x9A] = { "TXS", &Cpu6502::TXS, &Cpu6502::IMP, 2 };
 
 	instruction_lookup[0x4C] = { "JMP", &Cpu6502::JMP, &Cpu6502::AB0, 3 };
 	instruction_lookup[0x6C] = { "JMP", &Cpu6502::JMP, &Cpu6502::IND, 5 };
 
+	instruction_lookup[0x20] = { "JSR", &Cpu6502::JSR, &Cpu6502::AB0, 6 };
+
+	instruction_lookup[0x30] = { "BMI", &Cpu6502::BMI, &Cpu6502::REL, 2 };
+	instruction_lookup[0xD0] = { "BNE", &Cpu6502::BNE, &Cpu6502::REL, 2 };
 	instruction_lookup[0x10] = { "BPL", &Cpu6502::BPL, &Cpu6502::REL, 2 };
 
 	instruction_lookup[0xA9] = { "LDA", &Cpu6502::LDA, &Cpu6502::IMM, 2 };
@@ -49,6 +67,31 @@ Cpu6502::Cpu6502(Nes* nesPtr) {
 	instruction_lookup[0xB6] = { "LDX", &Cpu6502::LDX, &Cpu6502::ZPY, 4 };
 	instruction_lookup[0xAE] = { "LDX", &Cpu6502::LDX, &Cpu6502::AB0, 4 };
 	instruction_lookup[0xBE] = { "LDX", &Cpu6502::LDX, &Cpu6502::ABY, 4 };
+
+	instruction_lookup[0xA0] = { "LDY", &Cpu6502::LDY, &Cpu6502::IMM, 2 };
+	instruction_lookup[0xA4] = { "LDY", &Cpu6502::LDY, &Cpu6502::ZP0, 3 };
+	instruction_lookup[0xB4] = { "LDY", &Cpu6502::LDY, &Cpu6502::ZPX, 4 };
+	instruction_lookup[0xAC] = { "LDY", &Cpu6502::LDY, &Cpu6502::AB0, 4 };
+	instruction_lookup[0xBC] = { "LDY", &Cpu6502::LDY, &Cpu6502::ABX, 4 };
+
+	instruction_lookup[0x84] = { "STY", &Cpu6502::STY, &Cpu6502::ZP0, 3 };
+	instruction_lookup[0x94] = { "STY", &Cpu6502::STY, &Cpu6502::ZPX, 4 };
+	instruction_lookup[0x8C] = { "STY", &Cpu6502::STY, &Cpu6502::AB0, 4 };
+
+	instruction_lookup[0xE6] = { "INC", &Cpu6502::INC, &Cpu6502::ZP0, 5 };
+	instruction_lookup[0xF6] = { "INC", &Cpu6502::INC, &Cpu6502::ZPX, 6 };
+	instruction_lookup[0xEE] = { "INC", &Cpu6502::INC, &Cpu6502::AB0, 6 };
+	instruction_lookup[0xFE] = { "INC", &Cpu6502::INC, &Cpu6502::ABX, 7 };
+
+	instruction_lookup[0xE8] = { "INX", &Cpu6502::INX, &Cpu6502::IMP, 2 };
+
+	instruction_lookup[0xC8] = { "INY", &Cpu6502::INY, &Cpu6502::IMP, 2 };
+
+	instruction_lookup[0xCA] = { "DEX", &Cpu6502::DEX, &Cpu6502::IMP, 2 };
+	
+	instruction_lookup[0x88] = { "DEY", &Cpu6502::DEY, &Cpu6502::IMP, 2 };
+
+	instruction_lookup[0x98] = { "TYA", &Cpu6502::TYA, &Cpu6502::IMP, 2 };
 }
 
 void Cpu6502::init() {
@@ -61,8 +104,12 @@ uint8_t Cpu6502::step() {
 	}
 
 	uint8_t opcode = nes->bus.read(PC++);
-	//std::cout << "PC: 0x" << std::hex << (int)PC << std::endl;
-	//std::cout << "Opcode: 0x" << std::hex << (int)opcode << std::endl;
+
+	if (opcode != 0x10 && opcode != 0xAD) {
+		std::cout << "PC: 0x" << std::hex << (int)PC << std::endl;
+		std::cout << "Opcode: 0x" << std::hex << (int)opcode << std::endl;
+	}
+
 	Instruction& inst = instruction_lookup[opcode];
 
 	if (inst.name == "UNK" || inst.addrmode == nullptr || inst.operate == nullptr) {
@@ -73,12 +120,6 @@ uint8_t Cpu6502::step() {
 
 	uint8_t addr_cycles = (this->*inst.addrmode)();
 	uint8_t op_cycles = (this->*inst.operate)();
-
-	if (opcode == 0xAD && target_addr == 0x2002) {
-		std::cout << "[TRACE] LDA $2002 finished. Acc: " << std::hex << (int)acc
-			<< " | N-Flag: " << (int)flags.n
-			<< " | PPU Scanline: " << std::dec << nes->ppu.scanline << std::endl;
-	}
 
 	return inst.cycles + addr_cycles + op_cycles;
 }
@@ -129,6 +170,11 @@ void Cpu6502::set_nz(uint8_t val) {
 	flags.n = (val & 0x80) ? 1 : 0;
 }
 
+void Cpu6502::stack_push(uint8_t data) {
+	nes->bus.write(0x0100 + SP, data);
+	SP--;
+}
+
 // ----- Instructions -----
 
 uint8_t Cpu6502::NOP() {
@@ -140,17 +186,57 @@ uint8_t Cpu6502::JMP() {
 	return 0;
 }
 
+uint8_t Cpu6502::JSR() {
+	// Store the two bytes of the last instruction address to be executed on the stack, decrement SP by 2.
+	uint16_t return_addr = PC + 1; // PC is 3 bytes ahead
+	uint8_t hi = (return_addr & 0xFF00) >> 8;
+	uint8_t lo = (return_addr & 0x00FF);
+
+	stack_push(hi);
+	stack_push(lo);
+
+	PC = target_addr;
+	return 0;
+}
+
+// BMI - Branch if Minus
+uint8_t Cpu6502::BMI() {
+	if (flags.n == 0) return 0;
+
+	uint8_t cycles = 1; // Branching takes at least 1 extra cycle
+
+	if ((PC & 0xFF00) != (target_addr & 0xFF00)) {
+		cycles++; // Page crossed
+	}
+
+	PC = target_addr;
+	return cycles;
+}
+
+// BPL - Branch if Plus
 uint8_t Cpu6502::BPL() {
 	if (flags.n != 0) return 0;
 
 	uint8_t cycles = 1; // Branching takes at least 1 extra cycle
 		
 	if ((PC & 0xFF00) != (target_addr & 0xFF00)) {
-		cycles++;
+		cycles++; // Page crossed
 	}
 
 	PC = target_addr;
 	return cycles;
+}
+
+// BNE - Branch if Not Equal
+uint8_t Cpu6502::BNE() {
+	if(flags.z == 0) return 0;
+
+	uint8_t cycles = 1; // Branching takes at least 1 extra cycle
+
+	if ((PC & 0xFF00) != (target_addr & 0xFF00)) {
+		cycles++; // Page crossed
+	}
+	PC = target_addr;
 }
 
 uint8_t Cpu6502::TXS() {
@@ -158,9 +244,47 @@ uint8_t Cpu6502::TXS() {
 	return 0;
 }
 
+uint8_t Cpu6502::INC() {
+	uint8_t mem = nes->bus.read(target_addr);
+	nes->bus.write(target_addr, mem++);
+	nes->bus.write(target_addr, mem);
+	set_nz(mem);
+	return 0;
+}
+
+uint8_t Cpu6502::INX() {
+	x_ind++;
+	set_nz(x_ind);
+	return 0;
+}
+
+uint8_t Cpu6502::INY() {
+	y_ind++;
+	set_nz(y_ind);
+	return 0;
+}
+
+uint8_t Cpu6502::DEX() {
+	x_ind--;
+	set_nz(x_ind);
+	return 0;
+}
+
+uint8_t Cpu6502::DEY() {
+	y_ind--;
+	set_nz(y_ind);
+	return 0;
+}
+
 uint8_t Cpu6502::LDX() {
 	x_ind = nes->bus.read(target_addr);
 	set_nz(x_ind);
+	return 0;
+}
+
+uint8_t Cpu6502::LDY() {
+	y_ind = nes->bus.read(target_addr);
+	set_nz(y_ind);
 	return 0;
 }
 
@@ -192,6 +316,18 @@ uint8_t Cpu6502::CLD() {
 //uint8_t Cpu6502::BRK() {
 //	return 0;
 //}
+
+uint8_t Cpu6502::CPX() {
+	uint8_t M = nes->bus.read(target_addr);
+	uint8_t result = x_ind - M;
+
+	// NVIB DIZC
+	flags.c = x_ind >= M;
+	flags.z = x_ind == M;
+	flags.n = (result & 0x80); // 7th bit
+
+	return 0;
+}
 
 uint8_t Cpu6502::CPY() {
 	uint8_t M = nes->bus.read(target_addr);
@@ -368,5 +504,10 @@ uint8_t Cpu6502::IZY() {
 
 	if ((base_addr & 0xFF00) != (target_addr & 0xFF00)) return 1; // Oops cycle
 
+	return 0;
+}
+
+uint8_t Cpu6502::TYA() {
+	acc = y_ind;
 	return 0;
 }

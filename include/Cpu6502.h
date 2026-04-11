@@ -61,7 +61,9 @@ class Cpu6502 {
 
 		Instruction instruction_lookup[256];
 
-		void set_nz(uint8_t val); // Helper function
+		// ----- Helpers -----
+		void set_nz(uint8_t val);
+		void stack_push(uint8_t data);
 
 		// ----- Opcodes -----
 		uint8_t NOP();
@@ -73,18 +75,21 @@ class Cpu6502 {
 		uint8_t STY();
 		uint8_t SEI();
 		uint8_t JMP();
+		uint8_t JSR();
+		uint8_t BMI();
 		uint8_t BNE();
 		uint8_t BEQ();
 		uint8_t CEC();
 		uint8_t CLC();
 		uint8_t CLD();
 		uint8_t ADC();
-		uint8_t INX();
-		uint8_t DEX();
+		uint8_t INC(); uint8_t INX(); uint8_t INY();
+		uint8_t DEX(); uint8_t DEY();
 		uint8_t BRK();
-		uint8_t CPY();
+		uint8_t CPX(); uint8_t CPY();
 		uint8_t TXS();
 		uint8_t BPL();
+		uint8_t TYA();
 
 		// ----- Addressing Modes -----
 		uint8_t IMP();	uint8_t ACC();	uint8_t IMM();
