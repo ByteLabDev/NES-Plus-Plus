@@ -50,8 +50,14 @@ Cpu6502::Cpu6502(Nes* nesPtr) {
 	// Shift
 
 	// Bitwise
+	il[0x29] = { "AND", &Cpu6502::AND, &Cpu6502::IMM, 2 }; il[0x25] = { "AND", &Cpu6502::AND, &Cpu6502::ZP0, 3 }; il[0x35] = { "AND", &Cpu6502::AND, &Cpu6502::ZPX, 4 };
+	il[0x2D] = { "AND", &Cpu6502::AND, &Cpu6502::AB0, 4 }; il[0x3D] = { "AND", &Cpu6502::AND, &Cpu6502::ABX, 4 }; il[0x39] = { "AND", &Cpu6502::AND, &Cpu6502::ABY, 4 };
+	il[0x21] = { "AND", &Cpu6502::AND, &Cpu6502::IZX, 6 }; il[0x31] = { "AND", &Cpu6502::AND, &Cpu6502::IZY, 5 };
 
 	// Compare
+	il[0xC9] = { "CMP", &Cpu6502::CMP, &Cpu6502::IMM, 2 }; il[0xC5] = { "CMP", &Cpu6502::CMP, &Cpu6502::ZP0, 3 }; il[0xD5] = { "CMP", &Cpu6502::CMP, &Cpu6502::ZPX, 4 };
+	il[0xCD] = { "CMP", &Cpu6502::CMP, &Cpu6502::AB0, 4 }; il[0xDD] = { "CMP", &Cpu6502::CMP, &Cpu6502::ABX, 4 }; il[0xD9] = { "CMP", &Cpu6502::CMP, &Cpu6502::ABY, 4 };
+	il[0xC1] = { "CMP", &Cpu6502::CMP, &Cpu6502::IZX, 6 }; il[0xD1] = { "CMP", &Cpu6502::CMP, &Cpu6502::IZY, 5 };
 	il[0xE0] = { "CPX", &Cpu6502::CPX, &Cpu6502::IMM, 2 }; il[0xE4] = { "CPX", &Cpu6502::CPX, &Cpu6502::ZP0, 3 }; il[0xEC] = { "CPX", &Cpu6502::CPX, &Cpu6502::AB0, 4 };
 	il[0xC0] = { "CPY", &Cpu6502::CPY, &Cpu6502::IMM, 2 }; il[0xC4] = { "CPY", &Cpu6502::CPY, &Cpu6502::ZP0, 3 }; il[0xCC] = { "CPY", &Cpu6502::CPY, &Cpu6502::AB0, 4 };
 
@@ -231,8 +237,25 @@ uint8_t Cpu6502::DEY() {
 // Shift
 
 // Bitwise
+uint8_t Cpu6502::AND() {
+	uint8_t mem = nes->bus.read(target_addr);
+	acc = acc & mem;
+	set_nz(acc);
+
+	return 0;
+}
 
 // Compare
+uint8_t Cpu6502::CMP() {
+	uint8_t mem = nes->bus.read(target_addr);
+	uint8_t result = acc - mem;
+
+	flags.c = (acc >= mem);
+	flags.z = (acc == mem);
+	flags.n = (result & 0x80) ? 1 : 0;
+
+	return 0;
+}
 uint8_t Cpu6502::CPX() {
 	uint8_t M = nes->bus.read(target_addr);
 	uint8_t result = x_ind - M;
