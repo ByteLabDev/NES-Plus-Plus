@@ -65,6 +65,7 @@ class Cpu6502 {
 		void set_nz(uint8_t val);
 		void stack_push(uint8_t data);
 		uint8_t stack_pop();
+		uint8_t branch();
 
 		// ----- Opcodes -----
 

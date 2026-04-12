@@ -62,9 +62,14 @@ Cpu6502::Cpu6502(Nes* nesPtr) {
 	il[0xC0] = { "CPY", &Cpu6502::CPY, &Cpu6502::IMM, 2 }; il[0xC4] = { "CPY", &Cpu6502::CPY, &Cpu6502::ZP0, 3 }; il[0xCC] = { "CPY", &Cpu6502::CPY, &Cpu6502::AB0, 4 };
 
 	// Branch
+	il[0x90] = { "BCC", &Cpu6502::BCC, &Cpu6502::REL, 2 };
+	il[0xB0] = { "BCS", &Cpu6502::BCS, &Cpu6502::REL, 2 };
+	il[0xF0] = { "BEQ", &Cpu6502::BEQ, &Cpu6502::REL, 2 };
 	il[0xD0] = { "BNE", &Cpu6502::BNE, &Cpu6502::REL, 2 };
 	il[0x10] = { "BPL", &Cpu6502::BPL, &Cpu6502::REL, 2 };
 	il[0x30] = { "BMI", &Cpu6502::BMI, &Cpu6502::REL, 2 };
+	il[0x50] = { "BVC", &Cpu6502::BVC, &Cpu6502::REL, 2 };
+	il[0x70] = { "BVS", &Cpu6502::BVS, &Cpu6502::REL, 2 };
 
 	// Jump
 	il[0x4C] = { "JMP", &Cpu6502::JMP, &Cpu6502::AB0, 3 }; il[0x6C] = { "JMP", &Cpu6502::JMP, &Cpu6502::IND, 5 }; il[0x20] = { "JSR", &Cpu6502::JSR, &Cpu6502::AB0, 6 };
@@ -164,7 +169,7 @@ void Cpu6502::stack_push(uint8_t data) {
 }
 
 uint8_t Cpu6502::stack_pop() {
-	SP++; // Increment first (Pre-Increment)
+	SP++;
 	return nes->bus.read(0x0100 + SP);
 }
 
@@ -280,41 +285,47 @@ uint8_t Cpu6502::CPY() {
 }
 
 // Branch
-uint8_t Cpu6502::BPL() {
-	if (flags.n != 0) return 0;
-
+uint8_t Cpu6502::branch() {
 	uint8_t cycles = 1; // Branching takes at least 1 extra cycle
 
 	if ((PC & 0xFF00) != (target_addr & 0xFF00)) {
 		cycles++; // Page crossed
 	}
-
 	PC = target_addr;
+
 	return cycles;
+}
+uint8_t Cpu6502::BCC() {
+	if (flags.c == 1) return 0;
+	return branch();
+}
+uint8_t Cpu6502::BCS() {
+	if (flags.c == 0) return 0;
+	return branch();
+}
+uint8_t Cpu6502::BEQ() {
+	if (flags.z == 0) return 0;
+	return branch();
 }
 uint8_t Cpu6502::BNE() {
 	if (flags.z == 1) return 0;
-
-	uint8_t cycles = 1; // Branching takes at least 1 extra cycle
-
-	if ((PC & 0xFF00) != (target_addr & 0xFF00)) {
-		cycles++; // Page crossed
-	}
-	PC = target_addr;
-
-	return cycles;
+	return branch();
+}
+uint8_t Cpu6502::BPL() {
+	if (flags.n != 0) return 0;
+	return branch();
 }
 uint8_t Cpu6502::BMI() {
 	if (flags.n == 0) return 0;
-
-	uint8_t cycles = 1; // Branching takes at least 1 extra cycle
-
-	if ((PC & 0xFF00) != (target_addr & 0xFF00)) {
-		cycles++; // Page crossed
-	}
-
-	PC = target_addr;
-	return cycles;
+	return branch();
+}
+uint8_t Cpu6502::BVC() {
+	if (flags.v == 1) return 0;
+	return branch();
+}
+uint8_t Cpu6502::BVS() {
+	if (flags.v == 0) return 0;
+	return branch();
 }
 
 // Jump
@@ -517,7 +528,7 @@ uint8_t Cpu6502::IND() {
 uint8_t Cpu6502::IZX() {
 	uint8_t base = nes->bus.read(PC++);
 	uint8_t lo_addr = (uint8_t)(base + x_ind);
-	uint8_t hi_addr = (uint8_t)(base + x_ind + 1);
+	uint8_t hi_addr = (uint8_t)(lo_addr + 1);
 
 	uint8_t lo = nes->bus.read((uint16_t)lo_addr);
 	uint8_t hi = nes->bus.read((uint16_t)hi_addr);
