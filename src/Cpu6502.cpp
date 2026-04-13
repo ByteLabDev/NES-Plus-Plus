@@ -91,8 +91,9 @@ Cpu6502::Cpu6502(Nes* nesPtr) {
 	il[0x28] = { "PLP", &Cpu6502::PLP, &Cpu6502::IMP, 4 }; il[0x9A] = { "TXS", &Cpu6502::TXS, &Cpu6502::IMP, 2 }; il[0xBA] = { "TSX", &Cpu6502::TSX, &Cpu6502::IMP, 2 };
 
 	// Flags
-	il[0x78] = { "SEI", &Cpu6502::SEI, &Cpu6502::IMP, 2 };
-	il[0xD8] = { "CLD", &Cpu6502::CLD, &Cpu6502::IMP, 2 };
+	il[0x18] = { "CLC", &Cpu6502::CLC, &Cpu6502::IMP, 2 }; il[0x38] = { "SEC", &Cpu6502::SEC, &Cpu6502::IMP, 2 }; il[0x58] = { "CLI", &Cpu6502::CLI, &Cpu6502::IMP, 2 };
+	il[0x78] = { "SEI", &Cpu6502::SEI, &Cpu6502::IMP, 2 }; il[0xD8] = { "CLD", &Cpu6502::CLD, &Cpu6502::IMP, 2 }; il[0xF8] = { "SED", &Cpu6502::SED, &Cpu6502::IMP, 2 };
+	il[0xB8] = { "CLV", &Cpu6502::CLV, &Cpu6502::IMP, 2 };
 
 	// Other
 	il[0xEA] = { "NOP", &Cpu6502::NOP, &Cpu6502::IMP, 2 };
@@ -562,12 +563,32 @@ uint8_t Cpu6502::TSX() {
 }
 
 // Flags
-uint8_t Cpu6502::CLD() {
-	flags.d = 0;
+uint8_t Cpu6502::CLC() {
+	flags.c = 0;
+	return 0;
+}
+uint8_t Cpu6502::SEC() {
+	flags.c = 1;
+	return 0;
+}
+uint8_t Cpu6502::CLI() {
+	flags.i = 0;
 	return 0;
 }
 uint8_t Cpu6502::SEI() {
 	flags.i = 1;
+	return 0;
+}
+uint8_t Cpu6502::CLD() {
+	flags.d = 0;
+	return 0;
+}
+uint8_t Cpu6502::SED() {
+	flags.d = 1;
+	return 0;
+}
+uint8_t Cpu6502::CLV() {
+	flags.v = 0;
 	return 0;
 }
 
