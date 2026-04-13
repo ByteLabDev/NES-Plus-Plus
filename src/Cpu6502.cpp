@@ -53,7 +53,16 @@ Cpu6502::Cpu6502(Nes* nesPtr) {
 	// Bitwise
 	il[0x29] = { "AND", &Cpu6502::AND, &Cpu6502::IMM, 2 }; il[0x25] = { "AND", &Cpu6502::AND, &Cpu6502::ZP0, 3 }; il[0x35] = { "AND", &Cpu6502::AND, &Cpu6502::ZPX, 4 };
 	il[0x2D] = { "AND", &Cpu6502::AND, &Cpu6502::AB0, 4 }; il[0x3D] = { "AND", &Cpu6502::AND, &Cpu6502::ABX, 4 }; il[0x39] = { "AND", &Cpu6502::AND, &Cpu6502::ABY, 4 };
-	il[0x21] = { "AND", &Cpu6502::AND, &Cpu6502::IZX, 6 }; il[0x31] = { "AND", &Cpu6502::AND, &Cpu6502::IZY, 5 };
+	il[0x21] = { "AND", &Cpu6502::AND, &Cpu6502::IZX, 6 }; il[0x31] = { "AND", &Cpu6502::AND, &Cpu6502::IZY, 5 }; il[0x09] = { "ORA", &Cpu6502::ORA, &Cpu6502::IMM, 2 };
+	il[0x05] = { "ORA", &Cpu6502::ORA, &Cpu6502::ZP0, 3 }; il[0x15] = { "ORA", &Cpu6502::ORA, &Cpu6502::ZPX, 4 }; il[0x0D] = { "ORA", &Cpu6502::ORA, &Cpu6502::AB0, 4 };
+	il[0x1D] = { "ORA", &Cpu6502::ORA, &Cpu6502::ABX, 4 }; il[0x19] = { "ORA", &Cpu6502::ORA, &Cpu6502::ABY, 4 }; il[0x01] = { "ORA", &Cpu6502::ORA, &Cpu6502::IZX, 6 };
+	il[0x11] = { "ORA", &Cpu6502::ORA, &Cpu6502::IZY, 5 }; il[0x49] = { "EOR", &Cpu6502::EOR, &Cpu6502::IMM, 2 }; il[0x45] = { "EOR", &Cpu6502::EOR, &Cpu6502::ZP0, 3 };
+	il[0x55] = { "EOR", &Cpu6502::EOR, &Cpu6502::ZPX, 4 }; il[0x4D] = { "EOR", &Cpu6502::EOR, &Cpu6502::AB0, 4 }; il[0x5D] = { "EOR", &Cpu6502::EOR, &Cpu6502::ABX, 4 };
+	il[0x59] = { "EOR", &Cpu6502::EOR, &Cpu6502::ABY, 4 }; il[0x41] = { "EOR", &Cpu6502::EOR, &Cpu6502::IZX, 6 }; il[0x51] = { "EOR", &Cpu6502::EOR, &Cpu6502::IZY, 5 };
+	il[0x24] = { "BIT", &Cpu6502::BIT, &Cpu6502::ZP0, 3 }; il[0x2C] = { "BIT", &Cpu6502::BIT, &Cpu6502::AB0, 4 };
+
+
+
 
 	// Compare
 	il[0xC9] = { "CMP", &Cpu6502::CMP, &Cpu6502::IMM, 2 }; il[0xC5] = { "CMP", &Cpu6502::CMP, &Cpu6502::ZP0, 3 }; il[0xD5] = { "CMP", &Cpu6502::CMP, &Cpu6502::ZPX, 4 };
@@ -266,7 +275,27 @@ uint8_t Cpu6502::AND() {
 	uint8_t mem = nes->bus.read(target_addr);
 	acc = acc & mem;
 	set_nz(acc);
-
+	return 0;
+}
+uint8_t Cpu6502::ORA() {
+	uint8_t mem = nes->bus.read(target_addr);
+	acc = acc | mem;
+	set_nz(acc);
+	return 0;
+}
+uint8_t Cpu6502::EOR() {
+	uint8_t mem = nes->bus.read(target_addr);
+	acc = acc ^ mem;
+	set_nz(acc);
+	return 0;
+}
+uint8_t Cpu6502::BIT() {
+	// BIT modifies flags, but does not change memory or registers.
+	uint8_t mem = nes->bus.read(target_addr);
+	uint8_t result = acc & mem;
+	flags.z = (result == 0) ? 1 : 0;	// Result == 0
+	flags.v = (mem >> 6) & 0x01;		// Memory bit 6
+	flags.n = (mem >> 7) & 0x01;		// Memory bit 7
 	return 0;
 }
 
