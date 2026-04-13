@@ -61,9 +61,6 @@ Cpu6502::Cpu6502(Nes* nesPtr) {
 	il[0x59] = { "EOR", &Cpu6502::EOR, &Cpu6502::ABY, 4 }; il[0x41] = { "EOR", &Cpu6502::EOR, &Cpu6502::IZX, 6 }; il[0x51] = { "EOR", &Cpu6502::EOR, &Cpu6502::IZY, 5 };
 	il[0x24] = { "BIT", &Cpu6502::BIT, &Cpu6502::ZP0, 3 }; il[0x2C] = { "BIT", &Cpu6502::BIT, &Cpu6502::AB0, 4 };
 
-
-
-
 	// Compare
 	il[0xC9] = { "CMP", &Cpu6502::CMP, &Cpu6502::IMM, 2 }; il[0xC5] = { "CMP", &Cpu6502::CMP, &Cpu6502::ZP0, 3 }; il[0xD5] = { "CMP", &Cpu6502::CMP, &Cpu6502::ZPX, 4 };
 	il[0xCD] = { "CMP", &Cpu6502::CMP, &Cpu6502::AB0, 4 }; il[0xDD] = { "CMP", &Cpu6502::CMP, &Cpu6502::ABX, 4 }; il[0xD9] = { "CMP", &Cpu6502::CMP, &Cpu6502::ABY, 4 };
@@ -81,7 +78,8 @@ Cpu6502::Cpu6502(Nes* nesPtr) {
 	il[0x60] = { "RTS", &Cpu6502::RTS, &Cpu6502::IMP, 6 }; il[0x00] = { "BRK", &Cpu6502::BRK, &Cpu6502::IMM, 7 }; il[0x40] = { "RTI", &Cpu6502::RTI, &Cpu6502::IMP, 6 };
 
 	// Stack
-	il[0x9A] = { "TXS", &Cpu6502::TXS, &Cpu6502::IMP, 2 };
+	il[0x48] = { "PHA", &Cpu6502::PHA, &Cpu6502::IMP, 3 }; il[0x08] = { "PHP", &Cpu6502::PHP, &Cpu6502::IMP, 3 }; il[0x68] = { "PLA", &Cpu6502::PLA, &Cpu6502::IMP, 4 };
+	il[0x28] = { "PLP", &Cpu6502::PLP, &Cpu6502::IMP, 4 }; il[0x9A] = { "TXS", &Cpu6502::TXS, &Cpu6502::IMP, 2 }; il[0xBA] = { "TSX", &Cpu6502::TSX, &Cpu6502::IMP, 2 };
 
 	// Flags
 	il[0x78] = { "SEI", &Cpu6502::SEI, &Cpu6502::IMP, 2 };
@@ -104,7 +102,7 @@ uint8_t Cpu6502::step() {
 
 	Instruction& inst = il[opcode];
 
-	if (opcode != 0x10 && opcode != 0xAD) {
+	if (opcode != 0x10 && opcode != 0xAD && inst.name != "STA" && inst.name != "DEX" && inst.name != "BNE" && inst.name != "INX" && inst.name != "INY" && inst.name != "LDA") {
 		//std::cout << "PC: 0x" << std::hex << (int)PC << std::endl;
 		std::cout << "PC: 0x" << std::hex << (int)PC << " | Opcode: 0x" << std::hex << (int)opcode << " = " << inst.name << std::endl;
 	}
@@ -417,8 +415,33 @@ uint8_t Cpu6502::RTI() {
 }
 
 // Stack
+uint8_t Cpu6502::PHA() {
+	stack_push(acc);
+	return 0;
+}
+uint8_t Cpu6502::PLA() {
+	acc = stack_pop();
+	set_nz(acc);
+	return 0;
+}
+uint8_t Cpu6502::PHP() {
+	FLAGS temp_flags = flags;
+	temp_flags.b = 1;
+	temp_flags.u = 1;
+	stack_push(temp_flags.reg);
+	return 0;
+}
+uint8_t Cpu6502::PLP() {
+	flags.reg = stack_pop();
+	return 0;
+}
 uint8_t Cpu6502::TXS() {
 	SP = x_ind;
+	return 0;
+}
+uint8_t Cpu6502::TSX() {
+	x_ind = SP;
+	set_nz(x_ind);
 	return 0;
 }
 
