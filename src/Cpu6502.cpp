@@ -37,14 +37,15 @@ Cpu6502::Cpu6502(Nes* nesPtr) {
 	il[0x98] = { "TYA", &Cpu6502::TYA, &Cpu6502::IMP, 2 };
 
 	// Arithmetic
-	il[0xE6] = { "INC", &Cpu6502::INC, &Cpu6502::ZP0, 5 };
-	il[0xF6] = { "INC", &Cpu6502::INC, &Cpu6502::ZPX, 6 };
-	il[0xEE] = { "INC", &Cpu6502::INC, &Cpu6502::AB0, 6 };
-	il[0xFE] = { "INC", &Cpu6502::INC, &Cpu6502::ABX, 7 };
-
-	il[0xE8] = { "INX", &Cpu6502::INX, &Cpu6502::IMP, 2 };
-	il[0xCA] = { "DEX", &Cpu6502::DEX, &Cpu6502::IMP, 2 };
-	il[0xC8] = { "INY", &Cpu6502::INY, &Cpu6502::IMP, 2 };
+	il[0x69] = { "ADC", &Cpu6502::ADC, &Cpu6502::IMM, 2 }; il[0x65] = { "ADC", &Cpu6502::ADC, &Cpu6502::ZP0, 3 }; il[0x75] = { "ADC", &Cpu6502::ADC, &Cpu6502::ZPX, 4 };
+	il[0x6D] = { "ADC", &Cpu6502::ADC, &Cpu6502::AB0, 4 }; il[0x7D] = { "ADC", &Cpu6502::ADC, &Cpu6502::ABX, 4 }; il[0x79] = { "ADC", &Cpu6502::ADC, &Cpu6502::ABY, 4 };
+	il[0x61] = { "ADC", &Cpu6502::ADC, &Cpu6502::IZX, 6 }; il[0x71] = { "ADC", &Cpu6502::ADC, &Cpu6502::IZY, 5 }; il[0xE9] = { "SBC", &Cpu6502::SBC, &Cpu6502::IMM, 2 };
+	il[0xE5] = { "SBC", &Cpu6502::SBC, &Cpu6502::ZP0, 3 }; il[0xF5] = { "SBC", &Cpu6502::SBC, &Cpu6502::ZPX, 4 }; il[0xED] = { "SBC", &Cpu6502::SBC, &Cpu6502::AB0, 4 };
+	il[0xFD] = { "SBC", &Cpu6502::SBC, &Cpu6502::ABX, 4 }; il[0xF9] = { "SBC", &Cpu6502::SBC, &Cpu6502::ABY, 4 }; il[0xE1] = { "SBC", &Cpu6502::SBC, &Cpu6502::IZX, 6 };
+	il[0xF1] = { "SBC", &Cpu6502::SBC, &Cpu6502::IZY, 5 }; il[0xE6] = { "INC", &Cpu6502::INC, &Cpu6502::ZP0, 5 }; il[0xF6] = { "INC", &Cpu6502::INC, &Cpu6502::ZPX, 6 };
+	il[0xEE] = { "INC", &Cpu6502::INC, &Cpu6502::AB0, 6 }; il[0xFE] = { "INC", &Cpu6502::INC, &Cpu6502::ABX, 7 }; il[0xC6] = { "DEC", &Cpu6502::DEC, &Cpu6502::ZP0, 5 };
+	il[0xD6] = { "DEC", &Cpu6502::DEC, &Cpu6502::ZPX, 6 }; il[0xCE] = { "DEC", &Cpu6502::DEC, &Cpu6502::AB0, 6 }; il[0xDE] = { "DEC", &Cpu6502::DEC, &Cpu6502::ABX, 7 };
+	il[0xE8] = { "INX", &Cpu6502::INX, &Cpu6502::IMP, 2 }; il[0xCA] = { "DEX", &Cpu6502::DEX, &Cpu6502::IMP, 2 }; il[0xC8] = { "INY", &Cpu6502::INY, &Cpu6502::IMP, 2 };
 	il[0x88] = { "DEY", &Cpu6502::DEY, &Cpu6502::IMP, 2 };
 
 	// Shift
@@ -62,14 +63,9 @@ Cpu6502::Cpu6502(Nes* nesPtr) {
 	il[0xC0] = { "CPY", &Cpu6502::CPY, &Cpu6502::IMM, 2 }; il[0xC4] = { "CPY", &Cpu6502::CPY, &Cpu6502::ZP0, 3 }; il[0xCC] = { "CPY", &Cpu6502::CPY, &Cpu6502::AB0, 4 };
 
 	// Branch
-	il[0x90] = { "BCC", &Cpu6502::BCC, &Cpu6502::REL, 2 };
-	il[0xB0] = { "BCS", &Cpu6502::BCS, &Cpu6502::REL, 2 };
-	il[0xF0] = { "BEQ", &Cpu6502::BEQ, &Cpu6502::REL, 2 };
-	il[0xD0] = { "BNE", &Cpu6502::BNE, &Cpu6502::REL, 2 };
-	il[0x10] = { "BPL", &Cpu6502::BPL, &Cpu6502::REL, 2 };
-	il[0x30] = { "BMI", &Cpu6502::BMI, &Cpu6502::REL, 2 };
-	il[0x50] = { "BVC", &Cpu6502::BVC, &Cpu6502::REL, 2 };
-	il[0x70] = { "BVS", &Cpu6502::BVS, &Cpu6502::REL, 2 };
+	il[0x90] = { "BCC", &Cpu6502::BCC, &Cpu6502::REL, 2 }; il[0xB0] = { "BCS", &Cpu6502::BCS, &Cpu6502::REL, 2 }; il[0xF0] = { "BEQ", &Cpu6502::BEQ, &Cpu6502::REL, 2 };
+	il[0xD0] = { "BNE", &Cpu6502::BNE, &Cpu6502::REL, 2 }; il[0x10] = { "BPL", &Cpu6502::BPL, &Cpu6502::REL, 2 }; il[0x30] = { "BMI", &Cpu6502::BMI, &Cpu6502::REL, 2 };
+	il[0x50] = { "BVC", &Cpu6502::BVC, &Cpu6502::REL, 2 }; il[0x70] = { "BVS", &Cpu6502::BVS, &Cpu6502::REL, 2 };
 
 	// Jump
 	il[0x4C] = { "JMP", &Cpu6502::JMP, &Cpu6502::AB0, 3 }; il[0x6C] = { "JMP", &Cpu6502::JMP, &Cpu6502::IND, 5 }; il[0x20] = { "JSR", &Cpu6502::JSR, &Cpu6502::AB0, 6 };
@@ -211,11 +207,35 @@ uint8_t Cpu6502::TYA() {
 }
 
 // Arithmetic
+uint8_t Cpu6502::ADC() {
+	uint8_t mem = nes->bus.read(target_addr);
+	uint16_t result = (uint16_t)acc + (uint16_t)mem + (uint16_t)flags.c;
+	flags.c = (result > 0xFF) ? 1 : 0;
+	flags.v = ((result ^ (uint16_t)acc) & (result ^ (uint16_t)mem) & 0x80) ? 1 : 0;
+	set_nz(result);
+	acc = result;
+	return 0;
+}
+uint8_t Cpu6502::SBC() {
+	uint8_t mem = nes->bus.read(target_addr);
+	uint16_t flipped_mem = (uint16_t)mem ^ 0x00FF;
+	uint16_t result = acc + flipped_mem + flags.c;
+	flags.c = (result > 0xFF) ? 1 : 0;
+	flags.v = ((result ^ (uint16_t)acc) & (result ^ flipped_mem) & 0x80) ? 1 : 0;
+	set_nz(result);
+	acc = (uint8_t)result;
+	return 0;
+}
 uint8_t Cpu6502::INC() {
 	uint8_t mem = nes->bus.read(target_addr);
 	nes->bus.write(target_addr, mem++);
 	nes->bus.write(target_addr, mem);
 	set_nz(mem);
+	return 0;
+}
+uint8_t Cpu6502::DEC() {
+	x_ind--;
+	set_nz(x_ind);
 	return 0;
 }
 uint8_t Cpu6502::INX() {
