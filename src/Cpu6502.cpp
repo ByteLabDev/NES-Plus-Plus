@@ -34,6 +34,7 @@ Cpu6502::Cpu6502(Nes* nesPtr) {
 	il[0x8C] = { "STY", &Cpu6502::STY, &Cpu6502::AB0, 4 };
 
 	// Transfer
+	il[0xAA] = { "TAX", &Cpu6502::TAX, &Cpu6502::IMP, 2 }; il[0x8A] = { "TXA", &Cpu6502::TXA, &Cpu6502::IMP, 2 }; il[0xA8] = { "TAY", &Cpu6502::TAY, &Cpu6502::IMP, 2 };
 	il[0x98] = { "TYA", &Cpu6502::TYA, &Cpu6502::IMP, 2 };
 
 	// Arithmetic
@@ -103,7 +104,6 @@ uint8_t Cpu6502::step() {
 	Instruction& inst = il[opcode];
 
 	if (opcode != 0x10 && opcode != 0xAD && inst.name != "STA" && inst.name != "DEX" && inst.name != "BNE" && inst.name != "INX" && inst.name != "INY" && inst.name != "LDA") {
-		//std::cout << "PC: 0x" << std::hex << (int)PC << std::endl;
 		std::cout << "PC: 0x" << std::hex << (int)PC << " | Opcode: 0x" << std::hex << (int)opcode << " = " << inst.name << std::endl;
 	}
 
@@ -208,8 +208,24 @@ uint8_t Cpu6502::STY() {
 }
 
 // Transfer
+uint8_t Cpu6502::TAX() {
+	x_ind = acc;
+	set_nz(x_ind);
+	return 0;
+}
+uint8_t Cpu6502::TXA() {
+	acc = x_ind;
+	set_nz(acc);
+	return 0;
+}
+uint8_t Cpu6502::TAY() {
+	y_ind = acc;
+	set_nz(y_ind);
+	return 0;
+}
 uint8_t Cpu6502::TYA() {
 	acc = y_ind;
+	set_nz(acc);
 	return 0;
 }
 
