@@ -50,6 +50,14 @@ Cpu6502::Cpu6502(Nes* nesPtr) {
 	il[0x88] = { "DEY", &Cpu6502::DEY, &Cpu6502::IMP, 2 };
 
 	// Shift
+	il[0x0A] = { "ASL", &Cpu6502::ASL, &Cpu6502::ACC, 2 }; il[0x06] = { "ASL", &Cpu6502::ASL, &Cpu6502::ZP0, 5 }; il[0x16] = { "ASL", &Cpu6502::ASL, &Cpu6502::ZPX, 6 };
+	il[0x0E] = { "ASL", &Cpu6502::ASL, &Cpu6502::AB0, 6 }; il[0x1E] = { "ASL", &Cpu6502::ASL, &Cpu6502::ABX, 7 };
+	il[0x4A] = { "LSR", &Cpu6502::LSR, &Cpu6502::ACC, 2 }; il[0x46] = { "LSR", &Cpu6502::LSR, &Cpu6502::ZP0, 5 }; il[0x56] = { "LSR", &Cpu6502::LSR, &Cpu6502::ZPX, 6 };
+	il[0x4E] = { "LSR", &Cpu6502::LSR, &Cpu6502::AB0, 6 }; il[0x5E] = { "LSR", &Cpu6502::LSR, &Cpu6502::ABX, 7 };
+	il[0x2A] = { "ROL", &Cpu6502::ROL, &Cpu6502::ACC, 2 }; il[0x26] = { "ROL", &Cpu6502::ROL, &Cpu6502::ZP0, 5 }; il[0x36] = { "ROL", &Cpu6502::ROL, &Cpu6502::ZPX, 6 };
+	il[0x2E] = { "ROL", &Cpu6502::ROL, &Cpu6502::AB0, 6 }; il[0x3E] = { "ROL", &Cpu6502::ROL, &Cpu6502::ABX, 7 };
+	il[0x6A] = { "ROR", &Cpu6502::ROR, &Cpu6502::ACC, 2 }; il[0x66] = { "ROR", &Cpu6502::ROR, &Cpu6502::ZP0, 5 }; il[0x76] = { "ROR", &Cpu6502::ROR, &Cpu6502::ZPX, 6 };
+	il[0x6E] = { "ROR", &Cpu6502::ROR, &Cpu6502::AB0, 6 }; il[0x7E] = { "ROR", &Cpu6502::ROR, &Cpu6502::ABX, 7 };
 
 	// Bitwise
 	il[0x29] = { "AND", &Cpu6502::AND, &Cpu6502::IMM, 2 }; il[0x25] = { "AND", &Cpu6502::AND, &Cpu6502::ZP0, 3 }; il[0x35] = { "AND", &Cpu6502::AND, &Cpu6502::ZPX, 4 };
@@ -99,14 +107,13 @@ uint8_t Cpu6502::step() {
 		return 7;
 	}
 
-	uint8_t opcode = nes->bus.read(PC++);
+	opcode = nes->bus.read(PC++);
 
 	Instruction& inst = il[opcode];
 
-	if (opcode != 0x10 && opcode != 0xAD && inst.name != "STA" && inst.name != "DEX" && inst.name != "BNE" && inst.name != "INX" && inst.name != "INY" && inst.name != "LDA") {
-		std::cout << "PC: 0x" << std::hex << (int)PC << " | Opcode: 0x" << std::hex << (int)opcode << " = " << inst.name << std::endl;
-	}
-
+	//if (opcode != 0x10 && opcode != 0xAD && inst.name != "STA" && inst.name != "DEX" && inst.name != "BNE" && inst.name != "INX" && inst.name != "INY" && inst.name != "LDA") {
+	//	std::cout << "PC: 0x" << std::hex << (int)PC << " | Opcode: 0x" << std::hex << (int)opcode << " = " << inst.name << std::endl;
+	//}
 
 	if (inst.name == "UNK" || inst.addrmode == nullptr || inst.operate == nullptr) {
 		std::cout << "Unimplemented Opcode: 0x" << std::hex << (int)opcode << std::endl;
@@ -283,6 +290,99 @@ uint8_t Cpu6502::DEY() {
 }
 
 // Shift
+uint8_t Cpu6502::ASL() {
+	uint8_t value;
+	bool is_acc = (il[opcode].addrmode == &Cpu6502::ACC);
+	if (is_acc) {
+		value = acc;
+	} else {
+		value = nes->bus.read(target_addr);
+		nes->bus.write(target_addr, value);
+	}
+	flags.c = (value >> 7) & 0x01; // 7th bit
+	value <<= 1;
+	set_nz(value);
+
+	if (il[opcode].addrmode == &Cpu6502::ACC) {
+		acc = value;
+	} else {
+		nes->bus.write(target_addr, value);
+	}
+	return 0;
+}
+uint8_t Cpu6502::LSR() {
+	uint8_t value;
+	bool is_acc = (il[opcode].addrmode == &Cpu6502::ACC);
+	if (is_acc) {
+		value = acc;
+	}
+	else {
+		value = nes->bus.read(target_addr);
+		nes->bus.write(target_addr, value);
+	}
+	flags.c = value & 0x01; // Bit 0
+	value >>= 1;
+	flags.z = (value == 0) ? 1 : 0;
+	flags.n = 0;
+
+	if (il[opcode].addrmode == &Cpu6502::ACC) {
+		acc = value;
+	}
+	else {
+		nes->bus.write(target_addr, value);
+	}
+	return 0;
+}
+uint8_t Cpu6502::ROL() {
+	uint8_t value;
+	bool is_acc = (il[opcode].addrmode == &Cpu6502::ACC);
+	if (is_acc) {
+		value = acc;
+	}
+	else {
+		value = nes->bus.read(target_addr);
+		nes->bus.write(target_addr, value);
+	}
+	
+	uint8_t old_carry = flags.c;
+	flags.c = (value >> 7) & 0x01; // 7th bit
+
+	value = (value << 1) | old_carry;
+	set_nz(value);
+
+	if (il[opcode].addrmode == &Cpu6502::ACC) {
+		acc = value;
+	}
+	else {
+		nes->bus.write(target_addr, value);
+	}
+	return 0;
+}
+uint8_t Cpu6502::ROR() {
+	uint8_t value;
+	bool is_acc = (il[opcode].addrmode == &Cpu6502::ACC);
+	if (is_acc) {
+		value = acc;
+	}
+	else {
+		value = nes->bus.read(target_addr);
+		nes->bus.write(target_addr, value);
+	}
+
+	uint8_t old_carry = flags.c;
+	flags.c = value & 0x01; // Bit 0
+
+	value = (value >> 1) | (old_carry << 7);
+	set_nz(value);
+
+	if (il[opcode].addrmode == &Cpu6502::ACC) {
+		acc = value;
+	}
+	else {
+		nes->bus.write(target_addr, value);
+	}
+	return 0;
+}
 
 // Bitwise
 uint8_t Cpu6502::AND() {

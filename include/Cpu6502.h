@@ -26,6 +26,10 @@ class Cpu6502 {
 		void NMI();
 		void handle_nmi();
 	private:
+		Nes* nes;
+
+		uint8_t opcode; // Current opcode
+
 		uint16_t PC;    // Program Counter | Shows up to 64 kb (2^16 bytes) memory
 		uint8_t SP;     // Stack Pointer
 
@@ -54,9 +58,6 @@ class Cpu6502 {
 		};
 
 		FLAGS flags{ 0b00100000 };
-
-		Nes* nes;
-
 		bool nmi_pending = false;
 
 		std::array<Instruction, 256> il; // Instruction lookup
