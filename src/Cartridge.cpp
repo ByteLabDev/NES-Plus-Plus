@@ -6,12 +6,23 @@ Cartridge::Cartridge(const std::string& fileName) {
 }
 
 bool Cartridge::read(uint16_t addr, uint8_t& data) {
+	if (addr < 2000 && !chrRom.empty()) {
+		data = chrRom[addr];
+		return true;
+	}
 	if (addr >= 0x8000) {
-		// prgRom.size() is usually 16384 or 32768.
-		// Subtracting 1 gives us a bitmask (0x3FFF or 0x7FFF).
 		uint16_t mask = prgRom.size() - 1;
 
-		// This maps 0x8000-0xFFFF directly into the 0x0000-size range
+		data = prgRom[addr & mask];
+		return true;
+	}
+	return false;
+}
+
+bool Cartridge::write(uint16_t addr, uint8_t data) {
+	if (addr >= 0x8000) {
+		uint16_t mask = prgRom.size() - 1;
+
 		data = prgRom[addr & mask];
 		return true;
 	}
@@ -40,6 +51,15 @@ bool Cartridge::loadRom(const std::string& filename) {
 		file.seekg(512, std::ios::cur);
 	}
 
+	// Bit 3 of flags6: 1 = Four-screen, 0 = Use Bit 0
+	if (header.flags6 & 0x08) {
+		mirror = FOUR_SCREEN;
+	}
+	else {
+		// Bit 0 of flags6: 0 = Horizontal, 1 = Vertical
+		mirror = (header.flags6 & 0x01) ? VERTICAL : HORIZONTAL;
+	}
+
 	// Load PRG ROM
 	prgRom.resize(header.prg_rom_banks * 16384);
 	file.read(reinterpret_cast<char*>(prgRom.data()), prgRom.size());
@@ -59,4 +79,8 @@ bool Cartridge::loadRom(const std::string& filename) {
 
 bool Cartridge::loadRom() {
 	return loadRom(romPath);
+}
+
+Cartridge::MirrorMode Cartridge::get_mirror_mode() {
+	return mirror;
 }

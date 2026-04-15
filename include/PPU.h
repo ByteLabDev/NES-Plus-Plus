@@ -13,6 +13,7 @@ class PPU {
 		bool read(uint16_t addr, uint8_t& data);
 		bool write(uint16_t addr, uint16_t data);
 		uint8_t vram_read(uint16_t addr);
+		void PPU::vram_write(uint16_t addr, uint8_t data);
 		int c_count_temp = 0;
 	private:
 		// ------------------------------------
@@ -76,5 +77,11 @@ class PPU {
 		uint8_t		oam_addr;				// Sprite address
 		uint8_t		oam_data[256];			// Sprite memory
 
+		uint8_t		vram[2048];				// VRAM
+		uint8_t		palette_ram[32];		// Palette memory
+
 		Nes *nes;
+
+		// ----- Helper Methods -----
+		uint16_t get_mirror_index(uint16_t addr);
 };

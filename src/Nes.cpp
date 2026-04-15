@@ -11,6 +11,11 @@ void Nes::set_region(Region region) {
 	ppu_ratio = (region == PAL) ? 3.2f : 3.0f;
 }
 
+void Nes::insert_cartridge(Cartridge* cartridgePtr) {
+	cartridge = cartridgePtr;
+	bus.insertCartridge(cartridgePtr);
+}
+
 void Nes::tick() {
 	uint8_t cycles = cpu6502.step();
 

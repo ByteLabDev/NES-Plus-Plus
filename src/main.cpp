@@ -15,7 +15,7 @@ int main(int argc, const char* argv[]) {
 	Cartridge cartridge = Cartridge("C:\\Users\\adems\\Downloads\\Bomberman.nes");
 	cartridge.loadRom();
 
-	nes.bus.insertCartridge(&cartridge);
+	nes.insert_cartridge(&cartridge);
 
 	nes.cpu6502.reset();
 

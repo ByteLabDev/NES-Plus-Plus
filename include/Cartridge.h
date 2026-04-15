@@ -20,14 +20,21 @@ struct iNES_Header {
 
 class Cartridge {
 	public:
+		enum MirrorMode {
+			HORIZONTAL,
+			VERTICAL,
+			FOUR_SCREEN
+		};
 		Cartridge(const std::string& fileName);
 		bool read(uint16_t addr, uint8_t& data);
 		bool write(uint16_t addr, uint8_t data);
 		bool loadRom(const std::string& filename);
 		bool loadRom();
+		MirrorMode get_mirror_mode();
 	private:
 		std::string romPath;
 		std::vector<uint8_t> prgRom;	// Program instructions
 		std::vector<uint8_t> chrRom;	// Character data
 		Mapper mapper;					// Cartridge board mapper (https://www.nesdev.org/wiki/Cartridge_board_reference)
+		MirrorMode mirror;
 };

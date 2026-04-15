@@ -5,6 +5,7 @@
 #include "PPU.h"
 #include "Bus.h"
 #include "Cpu6502.h"
+#include "Cartridge.h"
 
 class Nes {
 	public:
@@ -17,6 +18,7 @@ class Nes {
 		float ppu_ratio;
 
 		void set_region(Region region);
+		void insert_cartridge(Cartridge* cartridgePtr);
 
 		Nes();
 
@@ -26,6 +28,7 @@ class Nes {
 		PPU ppu;
 		Cpu6502 cpu6502;
 		Bus bus;
+		Cartridge* cartridge;
 
 	private:
 		uint8_t clock = 0;
