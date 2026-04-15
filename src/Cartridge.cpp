@@ -5,14 +5,17 @@ Cartridge::Cartridge(const std::string& fileName) {
 	romPath = fileName;
 }
 
+// Temp: Use NROM map until mappers class is added
+
 bool Cartridge::read(uint16_t addr, uint8_t& data) {
-	if (addr < 2000 && !chrRom.empty()) {
+	if (addr < 0x2000 && !chrRom.empty()) {
+		// Reading from CHR-ROM
 		data = chrRom[addr];
 		return true;
 	}
 	if (addr >= 0x8000) {
+		// Reading from PRG-ROM
 		uint16_t mask = prgRom.size() - 1;
-
 		data = prgRom[addr & mask];
 		return true;
 	}
@@ -20,11 +23,14 @@ bool Cartridge::read(uint16_t addr, uint8_t& data) {
 }
 
 bool Cartridge::write(uint16_t addr, uint8_t data) {
-	if (addr >= 0x8000) {
-		uint16_t mask = prgRom.size() - 1;
-
-		data = prgRom[addr & mask];
+	if (addr < 0x2000) {
+		// Writing to CHR-RAM
+		chrRom[addr] = data;
 		return true;
+	}
+	if (addr >= 0x8000) {
+		// PRG-ROM is read-only!
+		return false;
 	}
 	return false;
 }
