@@ -8,12 +8,12 @@
 #include "Display.h"
 #include <chrono>
 #include <thread>
+#include <iostream>
 
 using namespace std::chrono_literals;
 
 int main(int argc, const char* argv[]) {
 	Nes nes;
-	Display display;
 
 	Cartridge cartridge = Cartridge("C:\\Users\\adems\\Downloads\\Bomberman.nes");
 	cartridge.loadRom();
@@ -23,10 +23,18 @@ int main(int argc, const char* argv[]) {
 	nes.cpu6502.reset();
 
 
-	while (display.isOpen()) {
-		display.update();
-		nes.tick();
-		display.render();
+	while (nes.display.isOpen()) {
+		nes.display.update();
+
+		while (!nes.ppu.frame_ready) {
+			nes.tick();
+		}
+
+		std::cout << "Rendering screen" << std::endl;
+
+		nes.ppu.frame_ready = false;
+
+		nes.display.render();
 		//std::this_thread::sleep_for(1ms);
 	}
 

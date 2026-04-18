@@ -4,6 +4,7 @@
 
 #include "PPU.h"
 #include "Bus.h"
+#include "Display.h"
 #include "Cpu6502.h"
 #include "Cartridge.h"
 
@@ -28,6 +29,7 @@ class Nes {
 		PPU ppu;
 		Cpu6502 cpu6502;
 		Bus bus;
+		Display display;
 		Cartridge* cartridge;
 
 	private:

@@ -108,11 +108,16 @@ void PPU::step() {
 
 	if (scanline == 241 && cycles == 1) {
 		status.flag_vblank = 1;
+		frame_ready = true;
 		if (ctrl.vblank_nmi_enable) {
 			// https://www.nesdev.org/wiki/PPU_registers#Vblank_NMI
 			// "Enabling NMI in PPUCTRL causes the NMI handler to be called at the start of vblank (scanline 241, dot 1)."
 			nes->cpu6502.NMI();
 		}
+	}
+
+	if (scanline < 240 && cycles >= 1 && cycles <= 256) {
+		render_pixel();
 	}
 
 	if (scanline == 261 && cycles == 1) {
@@ -208,4 +213,9 @@ void PPU::reset() {
 	addr_latch = false;
 
 	vram_read_buffer = 0x0;
+}
+
+void PPU::render_pixel() {
+	uint8_t palette_index = vram_read(0x3F00);
+	frame_buffer[scanline * 256 + cycles] = system_palette[palette_index & 0x3F];
 }
