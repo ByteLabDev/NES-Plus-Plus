@@ -67,32 +67,28 @@ uint8_t PPU::vram_read(uint16_t addr) {
 
 void PPU::vram_write(uint16_t addr, uint8_t data) {
 	addr &= 0x3FFF;
-	if (addr < 0x2000 && nes->cartridge != nullptr) {	// CHR-ROM / CHR-RAM
+
+	// CHR-ROM / CHR-RAM ($0000 - $2000)
+	if (addr < 0x2000 && nes->cartridge != nullptr) {
 		nes->cartridge->write(addr, data);
 		return;
 	}
 
-	if (addr >= 0x2000 && addr < 0x3F00) {				// NES internal VRAM
-		uint16_t mirrored_addr = addr & 0x2FFF;
-		vram[get_mirror_index(mirrored_addr)] = data;
-		return;
-	}
-
-	if (addr >= 0x3000) {								// Mirror of the 2kB region from $2000-2EFF.
+	// Nametables and Mirrors ($2000 - $3F00)
+	if (addr < 0x3F00) {
 		vram[get_mirror_index(addr)] = data;
 		return;
 	}
 
-	// 0x3F00 - 0x3FFF: Palettes
-	// 0x3F20 - 0x3FFF mirrors palette
+	// Palettes ($3F00 - $3FFF)
+	uint16_t palette_addr = addr & 0x1F;
+	if (palette_addr == 0x10) palette_addr = 0x00;
+	palette_ram[palette_addr] = data;
 
-	uint16_t mirrored_addr = 0x3F00 + (addr % 0xFF);
-	palette_ram[mirrored_addr] = (uint8_t)data;
 	return;
 }
 
 void PPU::step() {
-	//std::cout << "[PPU TRACE] Scanline: " << scanline << " Cycle: " << cycles << " VBlank: " << (int)status.flag_vblank << std::endl;
 	c_count_temp++;
 	cycles++;
 
@@ -140,13 +136,14 @@ bool PPU::read(uint16_t addr, uint8_t &data) {
 		case 0x7:	// PPUDATA
 			data = vram_read_buffer;
 			vram_read_buffer = vram_read(vram_addr);
-			vram_addr += (ctrl.increment_mode ? 32 : 1); // Increment by bit 2 of $2000 (0: add 1, going across; 1: add 32, going down)
 
 			if (vram_addr >= 0x3F00 && vram_addr <= 0x3FFF) { // https://www.nesdev.org/wiki/PPU_registers#Reading_palette_RAM
 				data = vram_read_buffer;
 			}
 
-			vram_addr = vram_addr % 0x3FFF; // The PPU address space is 14-bit, spanning $0000–$3FFF.
+			vram_addr += (ctrl.increment_mode ? 32 : 1); // Increment by bit 2 of $2000 (0: add 1, going across; 1: add 32, going down)
+
+			vram_addr &= 0x3FFF; // The PPU address space is 14-bit, spanning $0000–$3FFF.
 			break;
 	}
 
@@ -216,6 +213,28 @@ void PPU::reset() {
 }
 
 void PPU::render_pixel() {
-	uint8_t palette_index = vram_read(0x3F00);
-	frame_buffer[scanline * 256 + cycles] = system_palette[palette_index & 0x3F];
+	int x = cycles - 1;
+	int y = scanline;
+
+	uint16_t tile_x = x / 8;
+	uint16_t tile_y = y / 8;
+	uint16_t nametable_addr = 0x2000 + (tile_y * 32) + tile_x;
+	uint8_t tile_id = vram_read(nametable_addr);
+
+	uint16_t pattern_base = ctrl.bg_pattern ? 0x1000 : 0x0000;
+	int fine_y = y % 8;
+	int fine_x = x % 8;
+
+	uint16_t addr_low = pattern_base + (tile_id * 16) + fine_y;
+	uint16_t addr_high = addr_low + 8;
+
+	uint8_t low_byte = vram_read(addr_low);
+	uint8_t high_byte = vram_read(addr_high);
+
+	int bit = 7 - fine_x;
+	uint8_t pixel_val = ((low_byte >> bit) & 0x01) | (((high_byte >> bit) & 0x01) << 1);
+
+	uint8_t color_index = vram_read(0x3F00 + pixel_val);
+
+	frame_buffer[y * 256 + x] = system_palette[color_index & 0x3F] | 0xFF000000;
 }

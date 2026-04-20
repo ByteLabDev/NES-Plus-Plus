@@ -30,8 +30,6 @@ int main(int argc, const char* argv[]) {
 			nes.tick();
 		}
 
-		std::cout << "Rendering screen" << std::endl;
-
 		nes.ppu.frame_ready = false;
 
 		nes.display.render();

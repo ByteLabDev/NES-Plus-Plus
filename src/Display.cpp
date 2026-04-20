@@ -46,6 +46,7 @@ void Display::update_texture() {
 }
 
 void Display::render() {
+    //draw_debug_pattern_tables();
     update_texture();
     ImGui::Render();
 
@@ -87,4 +88,43 @@ void Display::render() {
     ImGui_ImplSDLRenderer2_RenderDrawData(ImGui::GetDrawData(), m_renderer);
 
     SDL_RenderPresent(m_renderer);
+}
+
+void Display::draw_debug_pattern_tables() {
+    for (uint16_t tile_y = 0; tile_y < 16; tile_y++) {
+        for (uint16_t tile_x = 0; tile_x < 16; tile_x++) {
+            // Calculate the 1D tile index (0 to 255)
+            uint16_t tile_index = tile_y * 16 + tile_x;
+
+            // Each tile is 16 bytes long
+            // Let's look at Pattern Table 0 (starting at 0x0000)
+            uint16_t offset = tile_index * 16;
+
+            for (uint16_t row = 0; row < 8; row++) {
+                // Read the two bitplane bytes for this specific row
+                uint8_t tile_lsb = nes->ppu.vram_read(offset + row);
+                uint8_t tile_msb = nes->ppu.vram_read(offset + row + 8);
+
+                for (uint16_t col = 0; col < 8; col++) {
+                    // Combine bits to get 0, 1, 2, or 3
+                    uint8_t pixel = ((tile_lsb >> (7 - col)) & 0x01) |
+                        (((tile_msb >> (7 - col)) & 0x01) << 1);
+
+                    // Map 0-3 to grayscale for visibility
+                    uint32_t color = 0;
+                    switch (pixel) {
+                    case 0: color = 0xFF000000; break; // Black
+                    case 1: color = 0xFF555555; break; // Dark Gray
+                    case 2: color = 0xFFAAAAAA; break; // Light Gray
+                    case 3: color = 0xFFFFFFFF; break; // White
+                    }
+
+                    // Calculate final screen coordinates
+                    int x = tile_x * 8 + col;
+                    int y = tile_y * 8 + row;
+                    nes->ppu.frame_buffer[y * 256 + x] = color;
+                }
+            }
+        }
+    }
 }

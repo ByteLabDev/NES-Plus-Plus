@@ -142,7 +142,6 @@ void Cpu6502::reset() {
 
 void Cpu6502::NMI() {
 	nmi_pending = true;
-	std::cout << "[NMI TRACE] Triggered!" << std::endl;
 }
 
 void Cpu6502::handle_nmi() {

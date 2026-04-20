@@ -82,11 +82,18 @@ class PPU {
 		uint8_t		vram[2048];					// VRAM
 		uint8_t		palette_ram[32];			// Palette memory
 
+		uint16_t	bg_shifter_pattern_lo;		// BG Shifter Pattern Lo
+		uint16_t	bg_shifter_pattern_hi;		// BG Shifter Pattern Hi
+		uint16_t	bg_shifter_attrib_lo;		// BG Shifter Attributes Lo
+		uint16_t	bg_shifter_attrib_hi;		// BG Shifter Attributes Hi
+
 		Nes *nes;
 
 		// ----- Helper Methods -----
 		uint16_t get_mirror_index(uint16_t addr);
 		void render_pixel();
+		void update_shifters();
+		void increment_scroll_x();
 
 		const uint32_t system_palette[64] = {
 			0x666666, 0x002A88, 0x1412A7, 0x3B00A4, 0x5C007E, 0x6E0040, 0x6C0600, 0x561D00,

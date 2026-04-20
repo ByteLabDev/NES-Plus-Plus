@@ -11,6 +11,7 @@ public:
     void render();
     bool isOpen() const { return m_running; }
     void update_texture();
+    void draw_debug_pattern_tables();
 
 private:
     Nes* nes;
