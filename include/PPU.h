@@ -18,6 +18,8 @@ class PPU {
 		uint32_t frame_buffer[256 * 240];	// 256x240 video output. 32 bits, 8 bits per color channel (RGBA)
 		bool frame_ready = false;
 	private:
+		Nes* nes;
+
 		// ------------------------------------
 		// ---------- MMIO Registers ----------
 		// ------------------------------------
@@ -59,7 +61,7 @@ class PPU {
 				uint8_t unused : 5;
 				uint8_t flag_sp_overflow : 1;	// Sprite overflow flag
 				uint8_t flag_sp_0_hit : 1;		// Sprite 0 hit flag
-				uint8_t flag_vblank : 1;			// Vblank flag, cleared on read. Unreliable, see wiki: https://www.nesdev.org/wiki/PPU_registers#PPUSTATUS_-_Rendering_events_($2002_read)
+				uint8_t flag_vblank : 1;		// Vblank flag, cleared on read. Unreliable, see wiki: https://www.nesdev.org/wiki/PPU_registers#PPUSTATUS_-_Rendering_events_($2002_read)
 			};
 			uint8_t reg;
 		};
@@ -81,13 +83,6 @@ class PPU {
 
 		uint8_t		vram[2048];					// VRAM
 		uint8_t		palette_ram[32];			// Palette memory
-
-		uint16_t	bg_shifter_pattern_lo;		// BG Shifter Pattern Lo
-		uint16_t	bg_shifter_pattern_hi;		// BG Shifter Pattern Hi
-		uint16_t	bg_shifter_attrib_lo;		// BG Shifter Attributes Lo
-		uint16_t	bg_shifter_attrib_hi;		// BG Shifter Attributes Hi
-
-		Nes *nes;
 
 		// ----- Helper Methods -----
 		uint16_t get_mirror_index(uint16_t addr);

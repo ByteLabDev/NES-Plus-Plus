@@ -234,7 +234,19 @@ void PPU::render_pixel() {
 	int bit = 7 - fine_x;
 	uint8_t pixel_val = ((low_byte >> bit) & 0x01) | (((high_byte >> bit) & 0x01) << 1);
 
-	uint8_t color_index = vram_read(0x3F00 + pixel_val);
+	// https://www.nesdev.org/wiki/PPU_attribute_tables
+	// Attribute table controls which palette is assigned to each part of the background
+	// Each byte controls the palette of a 32×32 pixel or 4×4 tile part of the nametable and is divided into four 2-bit areas. Each area covers 16×16 pixels or 2×2 tiles
+	uint16_t attr_addr = 0x23C0 + (tile_y / 4) * 8 + (tile_x / 4); // Attribute table starts at $23C0, $27C0, $2BC0, $2FC0
+	uint8_t attr_byte = vram_read(attr_addr);
+
+	// Select the correct 2 bits from that byte based on tile position
+	// Top-left, top-right, bottom-left, or bottom-right of the 4x4 area
+	int palette_shift = ((tile_y >> 1) & 0x01) << 2 | ((tile_x >> 1) & 0x01) << 1;
+	uint8_t palette_id = (attr_byte >> palette_shift) & 0x03;
+
+	// Combine palette selection with the pixel value
+	uint8_t color_index = vram_read(0x3F00 + (palette_id * 4) + pixel_val);
 
 	frame_buffer[y * 256 + x] = system_palette[color_index & 0x3F] | 0xFF000000;
 }
