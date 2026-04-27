@@ -3,7 +3,7 @@
 #include "Nes.h"
 #include <iostream>
 
-Nes::Nes() : ppu(this), cpu6502(this), bus(this), display(this) {
+Nes::Nes() : ppu(this), cpu6502(this), bus(this), display(this), controller(this) {
 	set_region(Region::PAL); // Temp: Hardcode region to PAL
 }
 

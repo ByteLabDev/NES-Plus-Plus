@@ -264,9 +264,11 @@ uint8_t Cpu6502::INC() {
 	return 0;
 }
 uint8_t Cpu6502::DEC() {
-	x_ind--;
-	set_nz(x_ind);
-	return 0;
+    uint8_t mem = nes->bus.read(target_addr);
+    mem--;
+    nes->bus.write(target_addr, mem);
+    set_nz(mem);
+    return 0;
 }
 uint8_t Cpu6502::INX() {
 	x_ind++;

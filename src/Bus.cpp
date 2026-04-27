@@ -30,6 +30,11 @@ uint8_t Bus::read(uint16_t addr) {
 	// APU, I/O Registers:		$4000 – $4017 (16384 - 16407)
 	if (addr >= 0x4000 && addr <= 0x4017) {
 		// TODO: Return APU and I/O registers
+		switch (addr) {
+			case 0x4016:
+				return nes->controller.read();
+			break;
+		}
 		return 0;
 	}
 
@@ -73,6 +78,12 @@ void Bus::write(uint16_t addr, uint8_t data) {
 	// APU, I/O Registers:		($4000 – $4017) (16384 - 16407)
 	if (addr >= 0x4000 && addr <= 0x4017) {
 		// TODO: Return APU and I/O registers
+
+		switch (addr) {
+			case 0x4016:
+				nes->controller.write(data & 0x01);
+			break;
+		}
 		return;
 	}
 }

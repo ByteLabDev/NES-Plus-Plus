@@ -7,6 +7,7 @@
 #include "Display.h"
 #include "Cpu6502.h"
 #include "Cartridge.h"
+#include "Controller.h"
 
 class Nes {
 	public:
@@ -31,6 +32,7 @@ class Nes {
 		Bus bus;
 		Display display;
 		Cartridge* cartridge;
+		Controller controller;
 
 	private:
 		uint8_t clock = 0;

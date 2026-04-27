@@ -2,10 +2,11 @@
 
 #define SDL_MAIN_HANDLED
 #include "Nes.h"
-#include "Bus.h";
+#include "Bus.h"
 #include "Cpu6502.h"
-#include "Cartridge.h"; // TEMP - REMOVE AFTER TESTING
+#include "Cartridge.h" // TEMP - REMOVE AFTER TESTING
 #include "Display.h"
+#include "Controller.h"
 #include <chrono>
 #include <thread>
 #include <iostream>
@@ -15,7 +16,7 @@ using namespace std::chrono_literals;
 int main(int argc, const char* argv[]) {
 	Nes nes;
 
-	Cartridge cartridge = Cartridge("C:\\Users\\adems\\Downloads\\Bomberman.nes");
+	Cartridge cartridge = Cartridge("C:\\Users\\adems\\Downloads\\Pacman.nes");
 	cartridge.loadRom();
 
 	nes.insert_cartridge(&cartridge);
@@ -24,6 +25,7 @@ int main(int argc, const char* argv[]) {
 
 
 	while (nes.display.isOpen()) {
+		nes.controller.update_state();
 		nes.display.update();
 
 		while (!nes.ppu.frame_ready) {
