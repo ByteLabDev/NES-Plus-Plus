@@ -12,6 +12,9 @@ Display::Display(Nes* nesPtr) {
     nes_texture = SDL_CreateTexture(m_renderer,
         SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_STREAMING, 256, 240);
 
+    debug_nt_texture = SDL_CreateTexture(m_renderer,
+        SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_STREAMING, 256, 240);
+
     // Initialize ImGui Context
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
@@ -37,6 +40,10 @@ void Display::update() {
             if (ImGui::MenuItem("Exit")) m_running = false;
             ImGui::EndMenu();
         }
+        if (ImGui::BeginMenu("Debug")) {
+            ImGui::MenuItem("Nametable Viewer", NULL, &show_nt_debugger);
+            ImGui::EndMenu();
+        }
         ImGui::EndMainMenuBar();
     }
 }
@@ -46,7 +53,7 @@ void Display::update_texture() {
 }
 
 void Display::render() {
-    //draw_debug_pattern_tables();
+    draw_debug_windows();
     update_texture();
     ImGui::Render();
 
@@ -90,41 +97,53 @@ void Display::render() {
     SDL_RenderPresent(m_renderer);
 }
 
-void Display::draw_debug_pattern_tables() {
-    for (uint16_t tile_y = 0; tile_y < 16; tile_y++) {
-        for (uint16_t tile_x = 0; tile_x < 16; tile_x++) {
-            // Calculate the 1D tile index (0 to 255)
-            uint16_t tile_index = tile_y * 16 + tile_x;
+void Display::draw_debug_windows() {
+    if (show_nt_debugger) {
+        // Update the pixel buffer based on the selected nametable
+        nes->ppu.debug_render_nametable(nt_buffer, selected_nt, &hovered_attr_id);
+        SDL_UpdateTexture(debug_nt_texture, NULL, nt_buffer, 256 * sizeof(uint32_t));
 
-            // Each tile is 16 bytes long
-            // Let's look at Pattern Table 0 (starting at 0x0000)
-            uint16_t offset = tile_index * 16;
+        ImGui::Begin("Nametable Debugger", &show_nt_debugger);
 
-            for (uint16_t row = 0; row < 8; row++) {
-                // Read the two bitplane bytes for this specific row
-                uint8_t tile_lsb = nes->ppu.vram_read(offset + row);
-                uint8_t tile_msb = nes->ppu.vram_read(offset + row + 8);
+        // --- Selector ---
+        ImGui::Text("Select Nametable:");
+        for (int i = 0; i < 4; i++) {
+            char label[16];
+            sprintf(label, "NT %d", i);
+            if (ImGui::RadioButton(label, &selected_nt, i)) {
+                // Radio button logic handles updating selected_nt
+            }
+            if (i < 3) ImGui::SameLine();
+        }
 
-                for (uint16_t col = 0; col < 8; col++) {
-                    // Combine bits to get 0, 1, 2, or 3
-                    uint8_t pixel = ((tile_lsb >> (7 - col)) & 0x01) |
-                        (((tile_msb >> (7 - col)) & 0x01) << 1);
+        ImGui::Separator();
 
-                    // Map 0-3 to grayscale for visibility
-                    uint32_t color = 0;
-                    switch (pixel) {
-                    case 0: color = 0xFF000000; break; // Black
-                    case 1: color = 0xFF555555; break; // Dark Gray
-                    case 2: color = 0xFFAAAAAA; break; // Light Gray
-                    case 3: color = 0xFFFFFFFF; break; // White
-                    }
+        // --- Nametable Image ---
+        ImVec2 canvas_pos = ImGui::GetCursorScreenPos();
+        ImVec2 canvas_size = ImVec2(512, 480); // Displayed at 2x scale
+        ImGui::Image((ImTextureID)debug_nt_texture, ImVec2(canvas_size.x, canvas_size.y));
 
-                    // Calculate final screen coordinates
-                    int x = tile_x * 8 + col;
-                    int y = tile_y * 8 + row;
-                    nes->ppu.frame_buffer[y * 256 + x] = color;
-                }
+        // --- Attribute Indicator (Hover Logic) ---
+        if (ImGui::IsItemHovered()) {
+            ImVec2 mouse_pos = ImGui::GetMousePos();
+            int rel_x = (int)(mouse_pos.x - canvas_pos.x) / 16; // Scale down from 512 to 32 tiles
+            int rel_y = (int)(mouse_pos.y - canvas_pos.y) / 16; // Scale down from 480 to 30 tiles
+
+            if (rel_x >= 0 && rel_x < 32 && rel_y >= 0 && rel_y < 30) {
+                // Manually calculate the attribute ID for the hovered coordinate
+                uint16_t nt_base = 0x2000 + (selected_nt * 0x400);
+                uint16_t attr_addr = nt_base + 960 + ((rel_y / 4) * 8) + (rel_x / 4);
+                uint8_t attr_byte = nes->ppu.vram_read(attr_addr);
+                uint8_t pal_id = (attr_byte >> (((rel_y & 2) ? 4 : 0) + ((rel_x & 2) ? 2 : 0))) & 0x03;
+
+                ImGui::BeginTooltip();
+                ImGui::Text("Tile: (%d, %d)", rel_x, rel_y);
+                ImGui::Text("Attr Addr: 0x%04X", attr_addr);
+                ImGui::Text("Palette ID: %d", pal_id);
+                ImGui::EndTooltip();
             }
         }
+
+        ImGui::End();
     }
 }

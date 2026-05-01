@@ -11,12 +11,25 @@ class PPU {
 		void reset();
 		void step();
 		bool read(uint16_t addr, uint8_t& data);
-		bool write(uint16_t addr, uint16_t data);
+		bool write(uint16_t addr, uint8_t data);
 		uint8_t vram_read(uint16_t addr);
 		void PPU::vram_write(uint16_t addr, uint8_t data);
 		int c_count_temp = 0;
 		uint32_t frame_buffer[256 * 240];	// 256x240 video output. 32 bits, 8 bits per color channel (RGBA)
 		bool frame_ready = false;
+		void debug_render_nametable(uint32_t* buffer, int nt_index, int* mouse_attr_id);
+
+		const uint32_t system_palette[64] = {
+			0x666666, 0x002A88, 0x1412A7, 0x3B00A4, 0x5C007E, 0x6E0040, 0x6C0600, 0x561D00,
+			0x333500, 0x0B4800, 0x005200, 0x004F08, 0x00404D, 0x000000, 0x000000, 0x000000,
+			0xADADAD, 0x155FD9, 0x4240FF, 0x7527FE, 0xA01ACC, 0xB71E7B, 0xB53120, 0x994E00,
+			0x6B6D00, 0x388700, 0x0C9300, 0x008F32, 0x007C8D, 0x000000, 0x000000, 0x000000,
+			0xFFFEFF, 0x64B0FF, 0x9291FF, 0xC686FF, 0xED7CFF, 0xFE7E00, 0xFF8A47, 0xEFA317,
+			0xC1BD00, 0x88D500, 0x5AE22E, 0x2FE377, 0x13D1CE, 0x4B4B4B, 0x000000, 0x000000,
+			0xFFFEFF, 0xBADCFF, 0xCECDFF, 0xE4BEFF, 0xF5B7FF, 0xF9B8D8, 0xF9BD9E, 0xF2C78E,
+			0xDFCF89, 0xC8DE8E, 0xB7E5B1, 0xA5E6C9, 0x99E2EB, 0xB9B9B9, 0x000000, 0x000000
+		};
+
 	private:
 		Nes* nes;
 
@@ -73,31 +86,41 @@ class PPU {
 
 		uint16_t	vram_addr;					// v register (Current VRAM address)
 		uint16_t	tmp_vram_addr;				// t register (Temp VRAM address)
-		uint8_t		fine_x;						// 3-bit fine X scroll
+		uint8_t		fine_x;						// x register (3-bit fine X scroll)
 		bool		addr_latch;					// w register (Write toggle)
 
 		uint8_t		vram_read_buffer;			// Delayed read buffer for $2007
 
 		uint8_t		oam_addr;					// Sprite address
 		uint8_t		oam_data[256];				// Sprite memory
+		uint8_t		secondary_oam_data[32];		// 32-byte buffer for current sprites on scanline
 
 		uint8_t		vram[2048];					// VRAM
 		uint8_t		palette_ram[32];			// Palette memory
 
+		uint8_t		sprite_n;					// Current sprite being examined (0-63)
+		uint8_t		sprite_m;					// Current byte of sprite being examined (0-3)
+		uint8_t		sprites_found;				// Number of sprites found for the current scanline (0-8)
+		
+		uint8_t		bg_next_tile_id;			// Index of the next background tile to render from nametable
+		uint8_t		bg_next_attrib;				// 2 bit palette index for the next background tile (from attribute table)
+		uint8_t		bg_next_lo;					// Low byte of 8x8 tile pattern from pattern table
+		uint8_t		bg_next_hi;					// High byte of 8x8 tile pattern from pattern table
+
+		uint16_t	bg_shifter_pattern_lo;
+		uint16_t	bg_shifter_pattern_hi;
+		uint16_t	bg_shifter_attrib_lo;
+		uint16_t	bg_shifter_attrib_hi;
+
 		// ----- Helper Methods -----
 		uint16_t get_mirror_index(uint16_t addr);
 		void render_pixel();
-		void update_shifters();
-		void increment_scroll_x();
+		void evaluate_sprites();
+		void evaluate_background();
+		void update_shift_registers();
+		void load_shift_registers();
 
-		const uint32_t system_palette[64] = {
-			0x666666, 0x002A88, 0x1412A7, 0x3B00A4, 0x5C007E, 0x6E0040, 0x6C0600, 0x561D00,
-			0x333500, 0x0B4800, 0x005200, 0x004F08, 0x00404D, 0x000000, 0x000000, 0x000000,
-			0xADADAD, 0x155FD9, 0x4240FF, 0x7527FE, 0xA01ACC, 0xB71E7B, 0xB53120, 0x994E00,
-			0x6B6D00, 0x388700, 0x0C9300, 0x008F32, 0x007C8D, 0x000000, 0x000000, 0x000000,
-			0xFFFEFF, 0x64B0FF, 0x9291FF, 0xC686FF, 0xED7CFF, 0xFE7E00, 0xFF8A47, 0xEFA317,
-			0xC1BD00, 0x88D500, 0x5AE22E, 0x2FE377, 0x13D1CE, 0x4B4B4B, 0x000000, 0x000000,
-			0xFFFEFF, 0xBADCFF, 0xCECDFF, 0xE4BEFF, 0xF5B7FF, 0xF9B8D8, 0xF9BD9E, 0xF2C78E,
-			0xDFCF89, 0xC8DE8E, 0xB7E5B1, 0xA5E6C9, 0x99E2EB, 0xB9B9B9, 0x000000, 0x000000
-		};
+		// ----- Scrolling -----
+		void coarse_x_increment();
+		void y_increment();
 };

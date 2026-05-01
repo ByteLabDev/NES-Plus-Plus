@@ -83,12 +83,16 @@ void PPU::vram_write(uint16_t addr, uint8_t data) {
 	// Palettes ($3F00 - $3FFF)
 	uint16_t palette_addr = addr & 0x1F;
 	if (palette_addr == 0x10) palette_addr = 0x00;
+	else if (palette_addr == 0x14) palette_addr = 0x04;
+	else if (palette_addr == 0x18) palette_addr = 0x08;
+	else if (palette_addr == 0x1C) palette_addr = 0x0C;
 	palette_ram[palette_addr] = data;
 
 	return;
 }
 
 void PPU::step() {
+	
 	c_count_temp++;
 	cycles++;
 
@@ -99,6 +103,7 @@ void PPU::step() {
 
 		if (scanline >= max_scanlines) {
 			scanline = 0;
+
 		}
 	}
 
@@ -112,90 +117,164 @@ void PPU::step() {
 		}
 	}
 
+	if (scanline == 261 && cycles == 1) {
+		status.flag_vblank = 0;
+		status.flag_sp_0_hit = 0;
+		status.flag_sp_overflow = 0;
+	}
+
 	if (scanline < 240 && cycles >= 1 && cycles <= 256) {
 		render_pixel();
 	}
 
-	if (scanline == 261 && cycles == 1) {
-		status.flag_vblank = 0;
+	// Visible scanlines (0-239) + Pre-render scanline (261)
+	bool rendering_enabled = mask.render_bg || mask.render_sp;
+
+	if (rendering_enabled && (scanline < 240 || scanline == 261)) {
+
+		if (cycles == 0) {
+			return;
+		}
+
+		// Cycles	1-256		| Data is fetched for each tile
+		// Cycles	321-336		| Prefetch cycles
+		if (cycles >= 1 && cycles <= 256 || (cycles >= 321 && cycles <= 336)) {
+			update_shift_registers();
+
+			uint8_t step = (cycles - 1) % 8;
+
+			switch (step) {
+			case 1:
+				// tile address = 0x2000 | (v & 0x0FFF)
+				bg_next_tile_id = vram_read(0x2000 | (vram_addr & 0x0FFF));
+				break;
+			case 3:{
+				// attribute address = 0x23C0 | (v & 0x0C00) | ((v >> 4) & 0x38) | ((v >> 2) & 0x07)
+				uint16_t bg_next_attrib_addr = 0x23C0 | (vram_addr & 0x0C00) | ((vram_addr >> 4) & 0x38) | ((vram_addr >> 2) & 0x07);
+				bg_next_attrib = vram_read(bg_next_attrib_addr);
+
+				if (vram_addr & 0x0040) bg_next_attrib >>= 4;
+				if (vram_addr & 0x0002) bg_next_attrib >>= 2;
+
+				bg_next_attrib &= 0x03;
+				break;
+				}
+			case 5:
+				bg_next_lo = vram_read((ctrl.bg_pattern << 12) | (bg_next_tile_id << 4) | ((vram_addr >> 12) & 0x07));
+				break;
+			case 7:
+				bg_next_hi = vram_read((ctrl.bg_pattern << 12) | (bg_next_tile_id << 4) | (((vram_addr >> 12) & 0x07) + 8));
+				coarse_x_increment();
+				load_shift_registers();
+				break;
+			}
+		}
+
+		if (cycles == 256) {
+			y_increment();
+		}
+
+		if (cycles == 257) {
+			// If rendering is enabled, the PPU copies all bits related to horizontal position from t to v:
+			// v: ....A.. ...BCDEF <- t: ....A.. ...BCDEF 0b000010000011111
+			vram_addr = (vram_addr & ~0x41F) | (tmp_vram_addr & 0x41F);
+		}
+
+		if (scanline == 261 && cycles >= 280 && cycles <= 304) {
+			// If rendering is enabled, at the end of vblank, shortly after the horizontal bits are copied from t to v at dot 257, 
+			// the PPU will repeatedly copy the vertical bits from t to v from dots 280 to 304, completing the full initialization of v from t: 
+			// v: GHIA.BC DEF..... <- t: GHIA.BC DEF..... 0b111101111100000
+			vram_addr = (vram_addr & ~0x7BE0) | (tmp_vram_addr & 0x7BE0);
+		}
+	}
+
+	// Scanlines 241-260 | Vertical blanking lines
+	if (scanline >= 241 && scanline <= 260) {
+
 	}
 }
 
-bool PPU::read(uint16_t addr, uint8_t &data) {
+bool PPU::read(uint16_t addr, uint8_t& data) {
 	//std::cout << "READ: 0x" << std::hex << addr << std::endl;
 	uint16_t reg = addr % 8; // Mirrors every 8 bytes from $2008 to $3FFF
 	switch (reg) {
-		case 0x2:	// PPUSTATUS
-			data = status.reg;
-			status.flag_vblank = 0;
-			addr_latch = false;
-			break;
-		case 0x4:	// OAMDATA
-			data = oam_data[oam_addr];
-			break;
-		case 0x7:	// PPUDATA
+	case 0x2:	// PPUSTATUS
+		data = status.reg;
+		status.flag_vblank = 0;
+		addr_latch = false;
+		break;
+	case 0x4:	// OAMDATA
+		data = oam_data[oam_addr];
+		break;
+	case 0x7:	// PPUDATA
+		data = vram_read_buffer;
+		vram_read_buffer = vram_read(vram_addr);
+
+		if (vram_addr >= 0x3F00 && vram_addr <= 0x3FFF) { // https://www.nesdev.org/wiki/PPU_registers#Reading_palette_RAM
 			data = vram_read_buffer;
-			vram_read_buffer = vram_read(vram_addr);
+		}
 
-			if (vram_addr >= 0x3F00 && vram_addr <= 0x3FFF) { // https://www.nesdev.org/wiki/PPU_registers#Reading_palette_RAM
-				data = vram_read_buffer;
-			}
+		vram_addr += (ctrl.increment_mode ? 32 : 1); // Increment by bit 2 of $2000 (0: add 1, going across; 1: add 32, going down)
 
-			vram_addr += (ctrl.increment_mode ? 32 : 1); // Increment by bit 2 of $2000 (0: add 1, going across; 1: add 32, going down)
-
-			vram_addr &= 0x3FFF; // The PPU address space is 14-bit, spanning $0000–$3FFF.
-			break;
+		vram_addr &= 0x3FFF; // The PPU address space is 14-bit, spanning $0000–$3FFF.
+		break;
 	}
 
 	return true;
 }
 
-bool PPU::write(uint16_t addr, uint16_t data) {
+bool PPU::write(uint16_t addr, uint8_t data) {
 	//std::cout << "WRITE: 0x" << std::hex << addr << std::endl;
 	uint16_t reg = addr % 8; // Mirrors every 8 bytes from $2008 to $3FFF
 
+	//if (data != 0) std::cout << "case: 0x" << reg << " data : 0x" << std::hex << data << std::endl;
+
+
 	switch (reg) {
-		case 0x0:	// PPUCTRL
-			ctrl.reg = data;
-			tmp_vram_addr &= ~(0x0C00); // 0000 1100 0000 0000
-			tmp_vram_addr |= (data & 0b11) << 10;
-			break;
-		case 0x1:	// PPUMASK
-			mask.reg = data;
-			break;
-		case 0x3:	// OAMADDR
-			oam_addr = data;
-			break;
-		case 0x4:	// OAMDATA
-			oam_data[oam_addr++] = (uint8_t)(data & 0xFF);
-			break;
-		case 0x5:	// PPUSCROLL
-			if (!addr_latch) {
-				fine_x = data & 0x7;
-				tmp_vram_addr = (tmp_vram_addr & 0xFFE0) | (data >> 3);
-				addr_latch = true;
-			}
-			else {
-				tmp_vram_addr = (tmp_vram_addr & 0x8C1F) | ((data & 0xF8) << 2);
-				tmp_vram_addr = (tmp_vram_addr & 0x0FFF) | ((data & 0x07) << 12);
-				addr_latch = false;
-			}
-			break;
-		case 0x6:	// PPUADDR
-			if (!addr_latch) {
-				tmp_vram_addr = (tmp_vram_addr & 0x00FF) | ((data & 0x3F) << 8);
-				addr_latch = true;
-			} else {
-				tmp_vram_addr = (tmp_vram_addr & 0xFF00) | (data & 0xFF);
-				vram_addr = tmp_vram_addr;
-				addr_latch = false;
-			}
-			break;
-		case 0x7:	// PPUDATA
-			vram_write(vram_addr, (uint8_t)(data & 0xFF));
-			vram_addr += (ctrl.increment_mode ? 32 : 1);
-			vram_addr &= 0x3FFF;
-			break;
+	case 0x0:	// PPUCTRL
+		ctrl.reg = data;
+		tmp_vram_addr &= ~(0x0C00); // 0000 1100 0000 0000
+		tmp_vram_addr |= (data & 0b11) << 10;
+		break;
+	case 0x1:	// PPUMASK
+		mask.reg = data;
+		break;
+	case 0x3:	// OAMADDR
+		oam_addr = data;
+		break;
+	case 0x4:	// OAMDATA
+		oam_data[oam_addr++] = (uint8_t)(data & 0xFF);
+		break;
+	case 0x5:	// PPUSCROLL
+		if (!addr_latch) {
+			uint16_t new_data = ((uint16_t)data & 0xF8) >> 3;
+			tmp_vram_addr = (tmp_vram_addr & ~0x1F) | new_data;
+			fine_x = data & 0x7;
+			addr_latch = true;
+		}
+		else {
+			tmp_vram_addr &= ~0x73E0;
+			tmp_vram_addr |= (data & 0x07) << 12; // Fine Y
+			tmp_vram_addr |= (data & 0xF8) << 2;  // Coarse Y
+			addr_latch = false;
+		}
+		break;
+	case 0x6:	// PPUADDR
+		if (!addr_latch) {
+			tmp_vram_addr = (tmp_vram_addr & 0x00FF) | ((data & 0x3F) << 8);
+			addr_latch = true;
+		}
+		else {
+			tmp_vram_addr = (tmp_vram_addr & 0xFF00) | (data & 0xFF);
+			vram_addr = tmp_vram_addr;
+			addr_latch = false;
+		}
+		break;
+	case 0x7:	// PPUDATA
+		vram_write(vram_addr, (uint8_t)(data & 0xFF));
+		vram_addr += (ctrl.increment_mode ? 32 : 1);
+		vram_addr &= 0x3FFF;
+		break;
 	}
 
 	return true;
@@ -212,41 +291,123 @@ void PPU::reset() {
 	vram_read_buffer = 0x0;
 }
 
+void PPU::coarse_x_increment() {
+	if ((vram_addr & 0x001F) == 31) {
+		vram_addr &= ~0x001F;
+		vram_addr ^= 0x0400;
+	}
+	else {
+		vram_addr++;
+	}
+}
+
+void PPU::y_increment() {
+	if ((vram_addr & 0x7000) != 0x7000) {
+		vram_addr += 0x1000;
+		return;
+	}
+
+	vram_addr &= ~0x7000;
+	int y = (vram_addr & 0x03E0) >> 5;
+	if (y == 29) {
+		y = 0;
+		vram_addr ^= 0x0800;
+	}
+	else if (y == 31) {
+		y = 0;
+	}
+	else {
+		y++;
+	}
+
+	vram_addr = (vram_addr & ~0x03E0) | (y << 5);
+}
+
+void PPU::load_shift_registers() {
+	// Move the bottom 8 bits to the top 8 bits, and put the new data in the bottom
+	bg_shifter_pattern_lo = (bg_shifter_pattern_lo & 0xFF00) | bg_next_lo;
+	bg_shifter_pattern_hi = (bg_shifter_pattern_hi & 0xFF00) | bg_next_hi;
+
+	// Do the same for attributes
+	bg_shifter_attrib_lo = (bg_shifter_attrib_lo & 0xFF00) | ((bg_next_attrib & 0x01) ? 0xFF : 0x00);
+	bg_shifter_attrib_hi = (bg_shifter_attrib_hi & 0xFF00) | ((bg_next_attrib & 0x02) ? 0xFF : 0x00);
+}
+
+void PPU::update_shift_registers() {
+	if (mask.render_bg || mask.render_sp) {
+		bg_shifter_pattern_lo <<= 1;
+		bg_shifter_pattern_hi <<= 1;
+		bg_shifter_attrib_lo <<= 1;
+		bg_shifter_attrib_hi <<= 1;
+	}
+}
+
+
 void PPU::render_pixel() {
 	int x = cycles - 1;
 	int y = scanline;
 
-	uint16_t tile_x = x / 8;
-	uint16_t tile_y = y / 8;
-	uint16_t nametable_addr = 0x2000 + (tile_y * 32) + tile_x;
-	uint8_t tile_id = vram_read(nametable_addr);
+	if (x < 0 || x >= 256 || y < 0 || y >= 240) return;
 
-	uint16_t pattern_base = ctrl.bg_pattern ? 0x1000 : 0x0000;
-	int fine_y = y % 8;
-	int fine_x = x % 8;
+	// The bit we want is at (15 - fine_x) because we shift left
+	uint16_t bit_mux = 0x8000 >> fine_x;
 
-	uint16_t addr_low = pattern_base + (tile_id * 16) + fine_y;
-	uint16_t addr_high = addr_low + 8;
+	uint8_t p0 = (bg_shifter_pattern_lo & bit_mux) > 0;
+	uint8_t p1 = (bg_shifter_pattern_hi & bit_mux) > 0;
+	uint8_t pixel_val = (p1 << 1) | p0;
 
-	uint8_t low_byte = vram_read(addr_low);
-	uint8_t high_byte = vram_read(addr_high);
+	uint8_t a0 = (bg_shifter_attrib_lo & bit_mux) > 0;
+	uint8_t a1 = (bg_shifter_attrib_hi & bit_mux) > 0;
+	uint8_t palette_id = (a1 << 1) | a0;
 
-	int bit = 7 - fine_x;
-	uint8_t pixel_val = ((low_byte >> bit) & 0x01) | (((high_byte >> bit) & 0x01) << 1);
+	// Use palette 0 (background color) if pixel is transparent
+	uint16_t palette_addr = 0x3F00;
+	if (pixel_val > 0) {
+		palette_addr = 0x3F00 + (palette_id * 4) + pixel_val;
+	}
 
-	// https://www.nesdev.org/wiki/PPU_attribute_tables
-	// Attribute table controls which palette is assigned to each part of the background
-	// Each byte controls the palette of a 32×32 pixel or 4×4 tile part of the nametable and is divided into four 2-bit areas. Each area covers 16×16 pixels or 2×2 tiles
-	uint16_t attr_addr = 0x23C0 + (tile_y / 4) * 8 + (tile_x / 4); // Attribute table starts at $23C0, $27C0, $2BC0, $2FC0
-	uint8_t attr_byte = vram_read(attr_addr);
-
-	// Select the correct 2 bits from that byte based on tile position
-	// Top-left, top-right, bottom-left, or bottom-right of the 4x4 area
-	int palette_shift = ((tile_y >> 1) & 0x01) << 2 | ((tile_x >> 1) & 0x01) << 1;
-	uint8_t palette_id = (attr_byte >> palette_shift) & 0x03;
-
-	// Combine palette selection with the pixel value
-	uint8_t color_index = vram_read(0x3F00 + (palette_id * 4) + pixel_val);
-
+	uint8_t color_index = vram_read(palette_addr);
 	frame_buffer[y * 256 + x] = system_palette[color_index & 0x3F] | 0xFF000000;
+
+
+	if (fine_x != 0) {
+		//std::cout << "fine_x: 0x" << std::hex << fine_x << std::endl;
+	}
+}
+
+void PPU::debug_render_nametable(uint32_t* buffer, int nt_index, int* mouse_attr_id) {
+	// A nametable is 32x30 tiles. 1 tile = 8x8 pixels. Total = 256x240 pixels.
+	uint16_t nt_base = 0x2000 + (nt_index * 0x400);
+
+	for (int y = 0; y < 30; y++) {
+		for (int x = 0; x < 32; x++) {
+			// 1. Get Tile ID
+			uint8_t tile_id = vram_read(nt_base + y * 32 + x);
+
+			// 2. Get Attribute (Palette)
+			// Attributes start 960 bytes after NT base
+			uint16_t attrib_addr = nt_base + 960 + ((y / 4) * 8) + (x / 4);
+			uint8_t attrib_byte = vram_read(attrib_addr);
+
+			// Extract the 2 bits for this specific 16x16 quadrant
+			uint8_t palette_id = (attrib_byte >> (((y & 2) ? 4 : 0) + ((x & 2) ? 2 : 0))) & 0x03;
+
+			// 3. Render the 8x8 tile pixels
+			for (int row = 0; row < 8; row++) {
+				uint8_t low = vram_read((ctrl.bg_pattern << 12) | (tile_id << 4) | row);
+				uint8_t high = vram_read((ctrl.bg_pattern << 12) | (tile_id << 4) | row + 8);
+
+				for (int col = 0; col < 8; col++) {
+					uint8_t pixel = ((low >> (7 - col)) & 0x01) | (((high >> (7 - col)) & 0x01) << 1);
+
+					uint16_t p_addr = 0x3F00 + (palette_id * 4) + pixel;
+					uint8_t color_idx = vram_read(p_addr) & 0x3F;
+
+					int px = x * 8 + col;
+					int py = y * 8 + row;
+					buffer[py * 256 + px] = system_palette[color_idx] | 0xFF000000;
+				}
+			}
+		}
+	}
 }
