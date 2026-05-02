@@ -80,6 +80,15 @@ void Bus::write(uint16_t addr, uint8_t data) {
 		// TODO: Return APU and I/O registers
 
 		switch (addr) {
+			case 0x4014: {
+				uint16_t page = data << 8;
+
+				for (uint16_t i = 0; i < 256; i++) {
+					uint8_t oam_byte = this->read(page | i);
+					nes->ppu.write(0x2004, oam_byte);
+				}
+				break;
+			}
 			case 0x4016:
 				nes->controller.write(data & 0x01);
 			break;

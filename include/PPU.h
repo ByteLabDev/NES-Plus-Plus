@@ -1,3 +1,5 @@
+// include/PPU.h
+
 #pragma once
 #include <cstdint>
 
@@ -32,6 +34,18 @@ class PPU {
 
 	private:
 		Nes* nes;
+
+		struct Sprite {
+			uint8_t y;					// Byte 0 - Y position
+			uint8_t id;					// Byte 1 - Tile/index
+			uint8_t attr;				// Byte 2 - Attributes
+			uint8_t x;					// Byte 3 - X position
+			uint8_t shifter_lo;			// Low byte of shifter
+			uint8_t shifter_hi;			// High byte of shifter
+			bool	is_sprite_zero;		// 
+		};
+
+		Sprite default_sp = { 0xFF, 0xFF, 0x00, 0xFF, 0x00, 0x00, 0x00 };
 
 		// ------------------------------------
 		// ---------- MMIO Registers ----------
@@ -97,20 +111,19 @@ class PPU {
 
 		uint8_t		vram[2048];					// VRAM
 		uint8_t		palette_ram[32];			// Palette memory
-
-		uint8_t		sprite_n;					// Current sprite being examined (0-63)
-		uint8_t		sprite_m;					// Current byte of sprite being examined (0-3)
-		uint8_t		sprites_found;				// Number of sprites found for the current scanline (0-8)
 		
 		uint8_t		bg_next_tile_id;			// Index of the next background tile to render from nametable
 		uint8_t		bg_next_attrib;				// 2 bit palette index for the next background tile (from attribute table)
 		uint8_t		bg_next_lo;					// Low byte of 8x8 tile pattern from pattern table
 		uint8_t		bg_next_hi;					// High byte of 8x8 tile pattern from pattern table
 
-		uint16_t	bg_shifter_pattern_lo;
-		uint16_t	bg_shifter_pattern_hi;
-		uint16_t	bg_shifter_attrib_lo;
-		uint16_t	bg_shifter_attrib_hi;
+		uint16_t	bg_shifter_pattern_lo;		// Low byte of shifter register for bg pattern
+		uint16_t	bg_shifter_pattern_hi;		// High byte of shifter register for bg pattern
+		uint16_t	bg_shifter_attrib_lo;		// Low byte of shifter register for bg attribute
+		uint16_t	bg_shifter_attrib_hi;		// High byte of shifter register for bg attribute
+
+		Sprite		sprite_buffer[8];			// Sprite buffer for current scanline
+		uint8_t		sprite_count;				// Number of sprites rendered on a single scanline
 
 		// ----- Helper Methods -----
 		uint16_t get_mirror_index(uint16_t addr);
@@ -119,6 +132,10 @@ class PPU {
 		void evaluate_background();
 		void update_shift_registers();
 		void load_shift_registers();
+		void handle_counters();
+		void process_visible_scanline();
+		void transfer_x_address();
+		void transfer_y_address();
 
 		// ----- Scrolling -----
 		void coarse_x_increment();

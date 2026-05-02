@@ -1,3 +1,5 @@
+// src/PPU.cpp
+
 #include "PPU.h"
 #include "Nes.h"
 #include <cstring>
@@ -92,13 +94,35 @@ void PPU::vram_write(uint16_t addr, uint8_t data) {
 }
 
 void PPU::step() {
-	
 	c_count_temp++;
 	cycles++;
 
+	handle_counters();
+
+	if (scanline < 240 && cycles >= 1 && cycles <= 256) {
+		render_pixel();
+	}
+
+	bool rendering_enabled = mask.render_bg || mask.render_sp;
+
+	// Visible scanlines (0-239) + Pre-render scanline (261)
+	if (rendering_enabled && (scanline < 240 || scanline == 261)) {
+		process_visible_scanline();
+	}
+
+	// Scanlines 241-260 | Vertical blanking lines
+	if (scanline >= 241 && scanline <= 260) {
+
+	}
+}
+
+void PPU::handle_counters() {
 	if (cycles >= 341) {
 		cycles = 0;
 		scanline++;
+
+		evaluate_sprites();
+
 		int max_scanlines = (nes->region == nes->PAL) ? 312 : 262;
 
 		if (scanline >= max_scanlines) {
@@ -122,76 +146,180 @@ void PPU::step() {
 		status.flag_sp_0_hit = 0;
 		status.flag_sp_overflow = 0;
 	}
+}
 
-	if (scanline < 240 && cycles >= 1 && cycles <= 256) {
-		render_pixel();
+void PPU::process_visible_scanline() {
+	if (cycles == 0) {
+		return;
 	}
 
-	// Visible scanlines (0-239) + Pre-render scanline (261)
-	bool rendering_enabled = mask.render_bg || mask.render_sp;
+	if (cycles == 1) {
+		//evaluate_sprites();
+	}
 
-	if (rendering_enabled && (scanline < 240 || scanline == 261)) {
+	// Cycles	1-256		|	Data is fetched for each tile
+	// Cycles	321-336		|	Prefetch cycles
+	if (cycles >= 1 && cycles <= 256 || (cycles >= 321 && cycles <= 336)) {
+		update_shift_registers();
 
-		if (cycles == 0) {
-			return;
+		uint8_t step = (cycles - 1) % 8;
+
+		switch (step) {
+		case 1:
+			// tile address = 0x2000 | (v & 0x0FFF)
+			bg_next_tile_id = vram_read(0x2000 | (vram_addr & 0x0FFF));
+			break;
+		case 3: {
+			// attribute address = 0x23C0 | (v & 0x0C00) | ((v >> 4) & 0x38) | ((v >> 2) & 0x07)
+			uint16_t bg_next_attrib_addr = 0x23C0 | (vram_addr & 0x0C00) | ((vram_addr >> 4) & 0x38) | ((vram_addr >> 2) & 0x07);
+			bg_next_attrib = vram_read(bg_next_attrib_addr);
+
+			if (vram_addr & 0x0040) bg_next_attrib >>= 4;
+			if (vram_addr & 0x0002) bg_next_attrib >>= 2;
+
+			bg_next_attrib &= 0x03;
+			break;
+		}
+		case 5:
+			bg_next_lo = vram_read((ctrl.bg_pattern << 12) | (bg_next_tile_id << 4) | ((vram_addr >> 12) & 0x07));
+			break;
+		case 7:
+			bg_next_hi = vram_read((ctrl.bg_pattern << 12) | (bg_next_tile_id << 4) | (((vram_addr >> 12) & 0x07) + 8));
+			coarse_x_increment();
+			load_shift_registers();
+			break;
+		}
+	}
+
+	if (cycles == 256) {
+		y_increment();
+	}
+
+	if (cycles == 257) {
+		transfer_x_address();
+	}
+
+	if (scanline == 261 && cycles >= 280 && cycles <= 304) {
+		transfer_y_address();
+	}
+
+	// Cycles	257-320		|	The tile data for the sprites on the next scanline are fetched here
+	if (cycles >= 257 && cycles <= 320) {
+		uint8_t sprite_index = (cycles - 257) / 8;
+		Sprite& s = sprite_buffer[sprite_index];
+
+		if (s.y >= 240) return; // Don't render sprite if it's off-screen
+
+		uint8_t step = (cycles - 1) % 8;
+		uint8_t row = scanline - s.y;
+
+		// Flip the sprite vertically if bit 7 is set
+		if (s.attr & 0x80) {
+			uint8_t height = ctrl.sprite_size ? 15 : 7;
+			row = height - row;
 		}
 
-		// Cycles	1-256		| Data is fetched for each tile
-		// Cycles	321-336		| Prefetch cycles
-		if (cycles >= 1 && cycles <= 256 || (cycles >= 321 && cycles <= 336)) {
-			update_shift_registers();
+		uint16_t tile_addr;
+		if (!ctrl.sprite_size) {
+			tile_addr = (ctrl.sp_pattern << 12) | (s.id << 4) | row;	// Use 8x8 sprite ($2000)
+		}
+		else {
+			tile_addr = ((s.id & 0x01) << 12) | ((s.id & 0xFE) << 4) | (row & 0x07); // Use 8x16 sprite ($2000)
+			if (row & 0x08) tile_addr += 16; // Move to second tile of sprite
+		}
+		if (row & 0x08) tile_addr += 16;
 
-			uint8_t step = (cycles - 1) % 8;
-
-			switch (step) {
-			case 1:
-				// tile address = 0x2000 | (v & 0x0FFF)
-				bg_next_tile_id = vram_read(0x2000 | (vram_addr & 0x0FFF));
+		switch (step) {
+			case 5: {
+				s.shifter_lo = vram_read(tile_addr);
 				break;
-			case 3:{
-				// attribute address = 0x23C0 | (v & 0x0C00) | ((v >> 4) & 0x38) | ((v >> 2) & 0x07)
-				uint16_t bg_next_attrib_addr = 0x23C0 | (vram_addr & 0x0C00) | ((vram_addr >> 4) & 0x38) | ((vram_addr >> 2) & 0x07);
-				bg_next_attrib = vram_read(bg_next_attrib_addr);
+			}
 
-				if (vram_addr & 0x0040) bg_next_attrib >>= 4;
-				if (vram_addr & 0x0002) bg_next_attrib >>= 2;
+			case 7: {
+				s.shifter_hi = vram_read(tile_addr + 8); // Add 8 to indicate bit plane = 1 (P)
 
-				bg_next_attrib &= 0x03;
-				break;
+				if (s.attr & 0x40) {
+					auto flip = [](uint8_t b) {
+						b = (b & 0xF0) >> 4 | (b & 0x0F) << 4;
+						b = (b & 0xCC) >> 2 | (b & 0x33) << 2;
+						b = (b & 0xAA) >> 1 | (b & 0x55) << 1;
+						return b;
+						};
+					s.shifter_lo = flip(s.shifter_lo);
+					s.shifter_hi = flip(s.shifter_hi);
 				}
-			case 5:
-				bg_next_lo = vram_read((ctrl.bg_pattern << 12) | (bg_next_tile_id << 4) | ((vram_addr >> 12) & 0x07));
-				break;
-			case 7:
-				bg_next_hi = vram_read((ctrl.bg_pattern << 12) | (bg_next_tile_id << 4) | (((vram_addr >> 12) & 0x07) + 8));
-				coarse_x_increment();
-				load_shift_registers();
 				break;
 			}
 		}
+	}
+}
 
-		if (cycles == 256) {
-			y_increment();
-		}
-
-		if (cycles == 257) {
-			// If rendering is enabled, the PPU copies all bits related to horizontal position from t to v:
-			// v: ....A.. ...BCDEF <- t: ....A.. ...BCDEF 0b000010000011111
-			vram_addr = (vram_addr & ~0x41F) | (tmp_vram_addr & 0x41F);
-		}
-
-		if (scanline == 261 && cycles >= 280 && cycles <= 304) {
-			// If rendering is enabled, at the end of vblank, shortly after the horizontal bits are copied from t to v at dot 257, 
-			// the PPU will repeatedly copy the vertical bits from t to v from dots 280 to 304, completing the full initialization of v from t: 
-			// v: GHIA.BC DEF..... <- t: GHIA.BC DEF..... 0b111101111100000
-			vram_addr = (vram_addr & ~0x7BE0) | (tmp_vram_addr & 0x7BE0);
-		}
+void PPU::evaluate_sprites() {
+	sprite_count = 0;
+	for (int i = 0; i < 8; i++) {
+		sprite_buffer[i] = default_sp;
+		sprite_buffer[i].shifter_lo = 0; // Ensure shifters are reset
+		sprite_buffer[i].shifter_hi = 0;
 	}
 
-	// Scanlines 241-260 | Vertical blanking lines
-	if (scanline >= 241 && scanline <= 260) {
+	int sprite_height = ctrl.sprite_size ? 16 : 8;
 
+	for (int i = 0; i < 64 && sprite_count < 8; i++) {
+		uint8_t sprite_y = oam_data[i * 4];
+		int diff = scanline - (int)sprite_y;
+
+		if (diff >= 0 && diff < sprite_height) {
+			Sprite& s = sprite_buffer[sprite_count];
+			s.id = oam_data[i * 4 + 1];
+			s.attr = oam_data[i * 4 + 2];
+			s.x = oam_data[i * 4 + 3];
+			s.y = sprite_y;
+			s.is_sprite_zero = (i == 0);
+
+			// --- IMMEDIATE FETCH LOGIC ---
+			uint8_t row = diff;
+			if (s.attr & 0x80) row = (sprite_height - 1) - row;
+
+			uint16_t tile_addr;
+			if (!ctrl.sprite_size) {
+				tile_addr = (ctrl.sp_pattern << 12) | (s.id << 4) | (row & 0x07);
+			}
+			else {
+				tile_addr = ((s.id & 0x01) << 12) | ((s.id & 0xFE) << 4) | (row & 0x07);
+				if (row & 0x08) tile_addr += 16;
+			}
+
+			s.shifter_lo = vram_read(tile_addr);
+			s.shifter_hi = vram_read(tile_addr + 8);
+
+			// Horizontal Flip
+			if (s.attr & 0x40) {
+				auto flip = [](uint8_t b) {
+					b = (b & 0xF0) >> 4 | (b & 0x0F) << 4;
+					b = (b & 0xCC) >> 2 | (b & 0x33) << 2;
+					b = (b & 0xAA) >> 1 | (b & 0x55) << 1;
+					return b;
+					};
+				s.shifter_lo = flip(s.shifter_lo);
+				s.shifter_hi = flip(s.shifter_hi);
+			}
+
+			sprite_count++;
+		}
 	}
+}
+
+void PPU::transfer_x_address() {
+	// If rendering is enabled, the PPU copies all bits related to horizontal position from t to v:
+	// v: ....A.. ...BCDEF <- t: ....A.. ...BCDEF 0b000010000011111
+	vram_addr = (vram_addr & ~0x41F) | (tmp_vram_addr & 0x41F);
+}
+
+void PPU::transfer_y_address() {
+	// If rendering is enabled, at the end of vblank, shortly after the horizontal bits are copied from t to v at dot 257, 
+	// the PPU will repeatedly copy the vertical bits from t to v from dots 280 to 304, completing the full initialization of v from t: 
+	// v: GHIA.BC DEF..... <- t: GHIA.BC DEF..... 0b111101111100000
+	vram_addr = (vram_addr & ~0x7BE0) | (tmp_vram_addr & 0x7BE0);
 }
 
 bool PPU::read(uint16_t addr, uint8_t& data) {
@@ -340,18 +468,27 @@ void PPU::update_shift_registers() {
 		bg_shifter_attrib_lo <<= 1;
 		bg_shifter_attrib_hi <<= 1;
 	}
-}
 
+	if (mask.render_sp && cycles >= 1 && cycles <= 256) {
+		for (int i = 0; i < sprite_count; i++) {
+			if (sprite_buffer[i].x > 0) {
+				sprite_buffer[i].x--;
+			}
+			else {
+				sprite_buffer[i].shifter_lo <<= 1;
+				sprite_buffer[i].shifter_hi <<= 1;
+			}
+		}
+	}
+}
 
 void PPU::render_pixel() {
 	int x = cycles - 1;
 	int y = scanline;
-
 	if (x < 0 || x >= 256 || y < 0 || y >= 240) return;
 
-	// The bit we want is at (15 - fine_x) because we shift left
+	// --- 1. Background Pixel Logic ---
 	uint16_t bit_mux = 0x8000 >> fine_x;
-
 	uint8_t p0 = (bg_shifter_pattern_lo & bit_mux) > 0;
 	uint8_t p1 = (bg_shifter_pattern_hi & bit_mux) > 0;
 	uint8_t pixel_val = (p1 << 1) | p0;
@@ -360,19 +497,63 @@ void PPU::render_pixel() {
 	uint8_t a1 = (bg_shifter_attrib_hi & bit_mux) > 0;
 	uint8_t palette_id = (a1 << 1) | a0;
 
-	// Use palette 0 (background color) if pixel is transparent
-	uint16_t palette_addr = 0x3F00;
-	if (pixel_val > 0) {
-		palette_addr = 0x3F00 + (palette_id * 4) + pixel_val;
+	// --- 2. Sprite Pixel Logic ---
+	uint8_t fg_pixel = 0x00;
+	uint8_t fg_palette = 0x00;
+	uint8_t fg_priority = 0x00;
+	int found_sprite_index = -1;
+
+	if (mask.render_sp) {
+		for (int i = 0; i < sprite_count; i++) {
+			// Only consider sprites whose X counter has reached 0
+			if (sprite_buffer[i].x == 0) {
+				uint8_t pixel_lo = (sprite_buffer[i].shifter_lo & 0x80) > 0;
+				uint8_t pixel_hi = (sprite_buffer[i].shifter_hi & 0x80) > 0;
+				fg_pixel = (pixel_hi << 1) | pixel_lo;
+
+				if (fg_pixel != 0) { // Sprite is not transparent here
+					fg_palette = (sprite_buffer[i].attr & 0x03) + 0x04; // Use sprite palettes (4-7)
+					fg_priority = (sprite_buffer[i].attr & 0x20) > 0;
+					found_sprite_index = i;
+					break; // First visible sprite in OAM wins
+				}
+			}
+		}
 	}
 
-	uint8_t color_index = vram_read(palette_addr);
-	frame_buffer[y * 256 + x] = system_palette[color_index & 0x3F] | 0xFF000000;
+	// --- 3. Multiplexing (Decision) ---
+	uint8_t final_pixel = 0x00;
+	uint8_t final_palette = 0x00;
 
-
-	if (fine_x != 0) {
-		//std::cout << "fine_x: 0x" << std::hex << fine_x << std::endl;
+	if (pixel_val == 0 && fg_pixel == 0) {
+		final_pixel = 0; final_palette = 0;
 	}
+	else if (pixel_val == 0 && fg_pixel > 0) {
+		final_pixel = fg_pixel; final_palette = fg_palette;
+	}
+	else if (pixel_val > 0 && fg_pixel == 0) {
+		final_pixel = pixel_val; final_palette = palette_id;
+	}
+	else {
+		// Both exist: check priority
+		if (fg_priority == 0) {
+			final_pixel = fg_pixel; final_palette = fg_palette;
+		}
+		else {
+			final_pixel = pixel_val; final_palette = palette_id;
+		}
+
+		// Sprite 0 Hit Logic
+		if (mask.render_bg && mask.render_sp) {
+			if (sprite_buffer[found_sprite_index].is_sprite_zero && x < 255) {
+				status.flag_sp_0_hit = 1;
+			}
+		}
+	}
+
+	uint16_t final_addr = 0x3F00 + (final_palette * 4) + final_pixel;
+	uint8_t final_color_index = vram_read(final_addr);
+	frame_buffer[y * 256 + x] = system_palette[final_color_index & 0x3F] | 0xFF000000;
 }
 
 void PPU::debug_render_nametable(uint32_t* buffer, int nt_index, int* mouse_attr_id) {
