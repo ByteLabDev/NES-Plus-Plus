@@ -1,8 +1,10 @@
+// src/Controller.cpp
+
 // https://www.nesdev.org/wiki/Standard_controller
 
 #include "Controller.h"
 #include "Nes.h"
-#include "SDL.h"
+#include "SDL3/SDL.h"
 #include "imgui.h"
 #include "imgui_impl_sdl2.h"
 #include "imgui_impl_sdlrenderer2.h"
@@ -13,7 +15,8 @@ Controller::Controller(Nes* nesPtr) {
 }
 
 void Controller::update_state() {
-	const uint8_t* state = SDL_GetKeyboardState(NULL);
+	int numkeys;
+	const bool* state = SDL_GetKeyboardState(&numkeys);
 
 	uint8_t current_buttons = 0x00;
 	if (state[SDL_SCANCODE_X])      current_buttons |= (1 << 0); // A

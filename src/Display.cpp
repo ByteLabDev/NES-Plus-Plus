@@ -1,37 +1,43 @@
+// src/Display.cpp
+
 #include "Display.h"
 #include "Nes.h"
 #include "imgui.h"
-#include "imgui_impl_sdl2.h"
-#include "imgui_impl_sdlrenderer2.h"
+#include "imgui_impl_sdl3.h"
+#include "imgui_impl_sdlrenderer3.h"
 
 Display::Display(Nes* nesPtr) {
     nes = nesPtr;
     SDL_Init(SDL_INIT_VIDEO);
-    m_window = SDL_CreateWindow("Nes Plus Plus", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 1280, 720, SDL_WINDOW_SHOWN);
-    m_renderer = SDL_CreateRenderer(m_window, -1, SDL_RENDERER_PRESENTVSYNC | SDL_RENDERER_ACCELERATED);
+    m_window = SDL_CreateWindow("Nes Plus Plus", 1280, 720, SDL_WINDOW_RESIZABLE | SDL_WINDOW_HIGH_PIXEL_DENSITY);
+    m_renderer = SDL_CreateRenderer(m_window, NULL);
     nes_texture = SDL_CreateTexture(m_renderer,
         SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_STREAMING, 256, 240);
 
     debug_nt_texture = SDL_CreateTexture(m_renderer,
         SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_STREAMING, 256, 240);
 
+    // Disable anti-aliasing
+    SDL_SetTextureScaleMode(nes_texture, SDL_SCALEMODE_NEAREST);
+    SDL_SetTextureScaleMode(debug_nt_texture, SDL_SCALEMODE_NEAREST);
+
     // Initialize ImGui Context
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
-    ImGui_ImplSDL2_InitForSDLRenderer(m_window, m_renderer);
-    ImGui_ImplSDLRenderer2_Init(m_renderer);
+    ImGui_ImplSDL3_InitForSDLRenderer(m_window, m_renderer);
+    ImGui_ImplSDLRenderer3_Init(m_renderer);
 }
 
 void Display::update() {
     SDL_Event event;
     while (SDL_PollEvent(&event)) {
-        ImGui_ImplSDL2_ProcessEvent(&event);
-        if (event.type == SDL_QUIT) m_running = false;
+        ImGui_ImplSDL3_ProcessEvent(&event);
+        if (event.type == SDL_EVENT_QUIT) m_running = false;
     }
 
     // Start ImGui frame
-    ImGui_ImplSDLRenderer2_NewFrame();
-    ImGui_ImplSDL2_NewFrame();
+    ImGui_ImplSDLRenderer3_NewFrame();
+    ImGui_ImplSDL3_NewFrame();
     ImGui::NewFrame();
 
     // Menu bar functions
@@ -89,10 +95,11 @@ void Display::render() {
     }
 
     // Render image
-    SDL_RenderCopy(m_renderer, nes_texture, NULL, &dest);
+    SDL_FRect fdest = { (float)dest.x, (float)dest.y, (float)dest.w, (float)dest.h };
+    SDL_RenderTexture(m_renderer, nes_texture, NULL, &fdest);
 
     // Draw menu bar
-    ImGui_ImplSDLRenderer2_RenderDrawData(ImGui::GetDrawData(), m_renderer);
+    ImGui_ImplSDLRenderer3_RenderDrawData(ImGui::GetDrawData(), m_renderer);
 
     SDL_RenderPresent(m_renderer);
 }
