@@ -1,10 +1,10 @@
-// main.cpp
+// src/main.cpp
 
 #define SDL_MAIN_HANDLED
 #include "Nes.h"
 #include "Bus.h"
 #include "Cpu6502.h"
-#include "Cartridge.h" // TEMP - REMOVE AFTER TESTING
+#include "Cartridge.h"
 #include "Display.h"
 #include "Controller.h"
 #include <chrono>
@@ -13,30 +13,40 @@
 
 using namespace std::chrono_literals;
 
+const std::chrono::nanoseconds frame_target_time(1000000000 / 60);
+
 int main(int argc, const char* argv[]) {
 	Nes nes;
 
-	Cartridge cartridge = Cartridge("C:\\Users\\adems\\Downloads\\Pacman.nes");
+	Cartridge cartridge = Cartridge("C:\\Users\\adems\\Downloads\\Super Mario Bros.nes");
 	cartridge.loadRom();
 
 	nes.insert_cartridge(&cartridge);
 
 	nes.cpu6502.reset();
 
+    auto last_frame_time = std::chrono::high_resolution_clock::now();
 
-	while (nes.display.isOpen()) {
-		nes.controller.update_state();
-		nes.display.update();
+    while (nes.display.isOpen()) {
+        auto current_time = std::chrono::high_resolution_clock::now();
+        auto elapsed = current_time - last_frame_time;
 
-		while (!nes.ppu.frame_ready) {
-			nes.tick();
-		}
+        if (elapsed >= frame_target_time) {
+            last_frame_time = current_time;
 
-		nes.ppu.frame_ready = false;
+            nes.controller.update_state();
+            nes.display.update();
 
-		nes.display.render();
-		//std::this_thread::sleep_for(1ms);
-	}
+            while (!nes.ppu.frame_ready) {
+                nes.tick();
+            }
+            nes.ppu.frame_ready = false;
 
-	return 0;
+            nes.display.render();
+        }
+        else {
+            std::this_thread::yield();
+        }
+    }
+    return 0;
 }
