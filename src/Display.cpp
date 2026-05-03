@@ -44,6 +44,9 @@ void Display::update() {
     if (ImGui::BeginMainMenuBar()) {
         if (ImGui::BeginMenu("File")) {
             if (ImGui::MenuItem("Exit")) m_running = false;
+            if (ImGui::MenuItem("Load ROM", "Ctrl+O")) {
+                open_file_dialog();
+            }
             ImGui::EndMenu();
         }
         if (ImGui::BeginMenu("Debug")) {
@@ -102,6 +105,25 @@ void Display::render() {
     ImGui_ImplSDLRenderer3_RenderDrawData(ImGui::GetDrawData(), m_renderer);
 
     SDL_RenderPresent(m_renderer);
+}
+
+void SDLCALL file_callback(void* userdata, const char* const* filelist, int filter) {
+    Nes* nes = (Nes*)userdata;
+
+    if (filelist && filelist[0]) {
+        const char* selected_path = filelist[0];
+        nes->cartridge->load_rom(selected_path);
+        nes->cpu6502.reset();
+    }
+}
+
+void Display::open_file_dialog() {
+    const SDL_DialogFileFilter filters[] = {
+        { "NES ROMs", "nes" },
+        { "All Files", "*" }
+    };
+
+    SDL_ShowOpenFileDialog(file_callback, nes, m_window, filters, 2, NULL, false);
 }
 
 void Display::draw_debug_windows() {

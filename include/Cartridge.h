@@ -1,3 +1,4 @@
+// include/Cartridge.h
 // https://www.nesdev.org/wiki/INES
 
 #pragma once
@@ -25,12 +26,13 @@ class Cartridge {
 			VERTICAL,
 			FOUR_SCREEN
 		};
-		Cartridge(const std::string& fileName);
+		Cartridge();
 		bool read(uint16_t addr, uint8_t& data);
 		bool write(uint16_t addr, uint8_t data);
-		bool loadRom(const std::string& filename);
-		bool loadRom();
+		bool load_rom(const std::string& filename);
+		bool load_rom();
 		MirrorMode get_mirror_mode();
+		bool is_loaded = false;
 	private:
 		std::string romPath;
 		std::vector<uint8_t> prgRom;	// Program instructions

@@ -18,12 +18,9 @@ const std::chrono::nanoseconds frame_target_time(1000000000 / 60);
 int main(int argc, const char* argv[]) {
 	Nes nes;
 
-	Cartridge cartridge = Cartridge("C:\\Users\\adems\\Downloads\\Super Mario Bros.nes");
-	cartridge.loadRom();
+	Cartridge cartridge = Cartridge();
 
 	nes.insert_cartridge(&cartridge);
-
-	nes.cpu6502.reset();
 
     auto last_frame_time = std::chrono::high_resolution_clock::now();
 
@@ -34,15 +31,22 @@ int main(int argc, const char* argv[]) {
         if (elapsed >= frame_target_time) {
             last_frame_time = current_time;
 
-            nes.controller.update_state();
-            nes.display.update();
+            if (nes.cartridge->is_loaded) {
+                nes.controller.update_state();
+                nes.display.update();
 
-            while (!nes.ppu.frame_ready) {
-                nes.tick();
+                while (!nes.ppu.frame_ready) {
+                    nes.tick();
+                }
+                nes.ppu.frame_ready = false;
+
+                nes.display.render();
             }
-            nes.ppu.frame_ready = false;
+            else {
+                nes.display.update();
+                nes.display.render();
+            }
 
-            nes.display.render();
         }
         else {
             std::this_thread::yield();

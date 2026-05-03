@@ -15,6 +15,7 @@ public:
     void update_texture();
     void draw_debug_pattern_tables();
     void draw_debug_windows();
+    void open_file_dialog();
 
 private:
     Nes* nes;

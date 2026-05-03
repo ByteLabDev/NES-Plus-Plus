@@ -1,8 +1,10 @@
+// src/Cartridge.cpp
+
 #include "Cartridge.h"
 #include <iostream>
 
-Cartridge::Cartridge(const std::string& fileName) {
-	romPath = fileName;
+Cartridge::Cartridge() {
+
 }
 
 // Temp: Use NROM map until mappers class is added
@@ -35,7 +37,7 @@ bool Cartridge::write(uint16_t addr, uint8_t data) {
 	return false;
 }
 
-bool Cartridge::loadRom(const std::string& filename) {
+bool Cartridge::load_rom(const std::string& filename) {
 	std::ifstream file(filename, std::ios::binary);
 
 	if (!file.is_open()) {
@@ -80,11 +82,12 @@ bool Cartridge::loadRom(const std::string& filename) {
 	}
 
 	romPath = filename;
+	is_loaded = true;
 	return true;
 }
 
-bool Cartridge::loadRom() {
-	return loadRom(romPath);
+bool Cartridge::load_rom() {
+	return load_rom(romPath);
 }
 
 Cartridge::MirrorMode Cartridge::get_mirror_mode() {
