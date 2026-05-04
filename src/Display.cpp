@@ -8,7 +8,7 @@
 
 Display::Display(Nes* nesPtr) {
     nes = nesPtr;
-    SDL_Init(SDL_INIT_VIDEO);
+    SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO);
     m_window = SDL_CreateWindow("Nes Plus Plus", 1280, 720, SDL_WINDOW_RESIZABLE | SDL_WINDOW_HIGH_PIXEL_DENSITY);
     m_renderer = SDL_CreateRenderer(m_window, NULL);
     nes_texture = SDL_CreateTexture(m_renderer,

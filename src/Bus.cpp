@@ -1,3 +1,4 @@
+// src/Bus.cpp
 // https://www.nesdev.org/wiki/CPU_memory_map
 
 #include "Nes.h"
@@ -29,9 +30,15 @@ uint8_t Bus::read(uint16_t addr) {
 
 	// APU, I/O Registers:		$4000 – $4017 (16384 - 16407)
 	if (addr >= 0x4000 && addr <= 0x4017) {
-		// TODO: Return APU and I/O registers
+		// APU registers
+		if (addr >= 0x4000 && addr <= 0x4013 || addr == 0x4015 || addr == 0x4017) {
+			uint8_t data;
+			nes->apu.read(addr, data);
+			return data;
+		}
+
 		switch (addr) {
-			case 0x4016:
+			case 0x4016:	// I/O (Controller)
 				return nes->controller.read();
 			break;
 		}
@@ -77,10 +84,14 @@ void Bus::write(uint16_t addr, uint8_t data) {
 
 	// APU, I/O Registers:		($4000 – $4017) (16384 - 16407)
 	if (addr >= 0x4000 && addr <= 0x4017) {
-		// TODO: Return APU and I/O registers
+		// APU registers
+		if (addr >= 0x4000 && addr <= 0x4013 || addr == 0x4015 || addr == 0x4017) {
+			nes->apu.write(addr, data);
+			return;
+		}
 
 		switch (addr) {
-			case 0x4014: {
+			case 0x4014: {	// Sprite DMA
 				uint16_t page = data << 8;
 
 				for (uint16_t i = 0; i < 256; i++) {
@@ -89,7 +100,7 @@ void Bus::write(uint16_t addr, uint8_t data) {
 				}
 				break;
 			}
-			case 0x4016:
+			case 0x4016:	// I/O (Controller)
 				nes->controller.write(data & 0x01);
 			break;
 		}

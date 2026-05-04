@@ -5,6 +5,9 @@
 #include <cstring>
 #include <iostream>
 #include "Cartridge.h"
+#include "Common.h"
+
+using namespace Common;
 
 PPU::PPU(Nes* nesPtr) {
 	nes = nesPtr;
@@ -123,7 +126,7 @@ void PPU::handle_counters() {
 
 		evaluate_sprites();
 
-		int max_scanlines = (nes->region == nes->PAL) ? 312 : 262;
+		int max_scanlines = (nes->region == Region::PAL) ? 312 : 262;
 
 		if (scanline >= max_scanlines) {
 			scanline = 0;
