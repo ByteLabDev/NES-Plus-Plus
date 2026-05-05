@@ -13,10 +13,12 @@
 
 using namespace std::chrono_literals;
 
-const std::chrono::nanoseconds frame_target_time(1000000000 / 60);
+
 
 int main(int argc, const char* argv[]) {
 	Nes nes;
+    
+    std::chrono::nanoseconds frame_target_time(1000000000 / nes.target_frame_rate);
 
 	Cartridge cartridge = Cartridge();
 

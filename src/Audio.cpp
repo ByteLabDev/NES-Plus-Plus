@@ -10,7 +10,7 @@
 Audio::Audio(Nes* nesPtr) {
     nes = nesPtr;
     SDL_AudioSpec spec;
-    spec.freq = 44100;
+    spec.freq = nes->sample_rate;
     spec.format = SDL_AUDIO_F32;
     spec.channels = 1;
 

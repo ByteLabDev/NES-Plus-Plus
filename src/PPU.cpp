@@ -130,7 +130,6 @@ void PPU::handle_counters() {
 
 		if (scanline >= max_scanlines) {
 			scanline = 0;
-
 		}
 	}
 
@@ -154,10 +153,6 @@ void PPU::handle_counters() {
 void PPU::process_visible_scanline() {
 	if (cycles == 0) {
 		return;
-	}
-
-	if (cycles == 1) {
-		//evaluate_sprites();
 	}
 
 	// Cycles	1-256		|	Data is fetched for each tile

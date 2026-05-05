@@ -16,6 +16,9 @@ class Nes {
 	public:
 		Common::Region region;
 		float ppu_ratio;
+		int target_frame_rate;
+		int cpu_clock_speed;
+		const int sample_rate = 44100;
 
 		void set_region(Common::Region region);
 		void insert_cartridge(Cartridge* cartridgePtr);
@@ -33,11 +36,10 @@ class Nes {
 		Controller controller;
 		APU apu;
 		Audio audio;
-
 	private:
 		uint8_t clock = 0;
 		float ppu_accumulator = 0;
 		double sample_time = 0;
-		double samples_per_nes_clock = 44100.0 / 1789773.0;
+		double samples_per_nes_clock;
 		std::vector<float> audio_queue;
 };

@@ -8,11 +8,13 @@ using namespace Common;
 
 Nes::Nes() : ppu(this), cpu6502(this), bus(this), display(this), controller(this), apu(this), audio(this) {
 	set_region(Region::NTSC); // Temp: Hardcode region to NTSC
-	samples_per_nes_clock = 44100.0 / (region == PAL ? 1662607.0 : 1789773.0);
 }
 
 void Nes::set_region(Region region) {
 	ppu_ratio = (region == PAL) ? 3.2f : 3.0f;
+    target_frame_rate = (region == Region::PAL) ? 50 : 60;
+    cpu_clock_speed = region == PAL ? 1662607.0 : 1789773.0;
+    samples_per_nes_clock = (double)sample_rate / (double)cpu_clock_speed;
 }
 
 void Nes::insert_cartridge(Cartridge* cartridgePtr) {
@@ -43,7 +45,8 @@ void Nes::tick() {
     }
 
     // Push to SDL once we have enough for a frame
-    if (audio_queue.size() >= 735) {
+    int max_audio_queue_size = sample_rate / target_frame_rate;
+    if (audio_queue.size() >= max_audio_queue_size) {
         audio.push_samples(audio_queue.data(), (int)audio_queue.size());
         audio_queue.clear();
     }
