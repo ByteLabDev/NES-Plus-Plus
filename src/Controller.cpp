@@ -12,6 +12,14 @@
 
 Controller::Controller(Nes* nesPtr) {
 	nes = nesPtr;
+	SDL_InitSubSystem(SDL_INIT_GAMEPAD);
+
+	int instance_count;
+	SDL_JoystickID* joysticks = SDL_GetGamepads(&instance_count);
+	if (instance_count > 0) {
+		gamepad = SDL_OpenGamepad(joysticks[0]);
+	}
+	SDL_free(joysticks);
 }
 
 void Controller::update_state() {
@@ -27,6 +35,23 @@ void Controller::update_state() {
 	if (state[SDL_SCANCODE_DOWN])   current_buttons |= (1 << 5); // Down
 	if (state[SDL_SCANCODE_LEFT])   current_buttons |= (1 << 6); // Left
 	if (state[SDL_SCANCODE_RIGHT])  current_buttons |= (1 << 7); // Right
+
+	if (gamepad && SDL_GamepadConnected(gamepad)) {
+		if (SDL_GetGamepadButton(gamepad, SDL_GAMEPAD_BUTTON_SOUTH))     current_buttons |= (1 << 0); // A
+		if (SDL_GetGamepadButton(gamepad, SDL_GAMEPAD_BUTTON_WEST))      current_buttons |= (1 << 1); // B
+		if (SDL_GetGamepadButton(gamepad, SDL_GAMEPAD_BUTTON_BACK))      current_buttons |= (1 << 2); // Select
+		if (SDL_GetGamepadButton(gamepad, SDL_GAMEPAD_BUTTON_START))     current_buttons |= (1 << 3); // Start
+		if (SDL_GetGamepadButton(gamepad, SDL_GAMEPAD_BUTTON_DPAD_UP))   current_buttons |= (1 << 4);
+		if (SDL_GetGamepadButton(gamepad, SDL_GAMEPAD_BUTTON_DPAD_DOWN)) current_buttons |= (1 << 5);
+		if (SDL_GetGamepadButton(gamepad, SDL_GAMEPAD_BUTTON_DPAD_LEFT)) current_buttons |= (1 << 6);
+		if (SDL_GetGamepadButton(gamepad, SDL_GAMEPAD_BUTTON_DPAD_RIGHT))current_buttons |= (1 << 7);
+
+		// Map D-Pad to Left Analog Stick
+		if (SDL_GetGamepadAxis(gamepad, SDL_GAMEPAD_AXIS_LEFTY) < -16000) current_buttons |= (1 << 4);
+		if (SDL_GetGamepadAxis(gamepad, SDL_GAMEPAD_AXIS_LEFTY) > 16000)  current_buttons |= (1 << 5);
+		if (SDL_GetGamepadAxis(gamepad, SDL_GAMEPAD_AXIS_LEFTX) < -16000) current_buttons |= (1 << 6);
+		if (SDL_GetGamepadAxis(gamepad, SDL_GAMEPAD_AXIS_LEFTX) > 16000)  current_buttons |= (1 << 7);
+	}
 
 	controller_state = current_buttons;
 }

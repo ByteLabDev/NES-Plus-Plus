@@ -1,5 +1,6 @@
 #pragma once
 #include <cstdint>
+#include <SDL3/Sdl.h>
 
 class Nes;
 
@@ -12,6 +13,7 @@ public:
 
 private:
     Nes* nes;
+    SDL_Gamepad* gamepad = nullptr;
     uint8_t controller_state = 0;
     uint8_t shift_register = 0;
     bool strobe = false;
