@@ -7,7 +7,7 @@
 using namespace Common;
 
 Nes::Nes() : ppu(this), cpu6502(this), bus(this), display(this), controller(this), apu(this), audio(this) {
-	set_region(Region::PAL); // Temp: Hardcode region to PAL
+	set_region(Region::NTSC); // Temp: Hardcode region to NTSC
 	samples_per_nes_clock = 44100.0 / (region == PAL ? 1662607.0 : 1789773.0);
 }
 
@@ -21,27 +21,30 @@ void Nes::insert_cartridge(Cartridge* cartridgePtr) {
 }
 
 void Nes::tick() {
-	uint8_t cycles = cpu6502.step();
-	apu.step();
+    uint8_t cycles = cpu6502.step();
 
-	sample_time += samples_per_nes_clock;
-	if (sample_time >= 1.0) {
-		sample_time -= 1.0;
-		audio_queue.push_back(apu.get_output());
-	}
+    // The APU must stay in sync with the CPU cycles
+    for (uint8_t i = 0; i < cycles; i++) {
+        apu.step();
 
-	// When the buffer gets reasonably full (e.g., every frame)
-	if (audio_queue.size() >= 735) { // Roughly 1/60th of a second
-		audio.push_samples(audio_queue.data(), audio_queue.size());
-		audio_queue.clear();
-	}
+        // Generate audio samples at the correct interval
+        sample_time += samples_per_nes_clock;
+        if (sample_time >= 1.0) {
+            sample_time -= 1.0;
+            audio_queue.push_back(apu.get_output());
+        }
+    }
 
-	ppu_accumulator += cycles * ppu_ratio;
+    // PPU still scales based on the total instruction cycles
+    ppu_accumulator += cycles * ppu_ratio;
+    while (ppu_accumulator >= 1.0f) {
+        ppu.step();
+        ppu_accumulator -= 1.0f;
+    }
 
-	while (ppu_accumulator >= 1.0f) {
-		ppu.step();
-		ppu_accumulator -= 1;
-	}
-
-	clock++;
+    // Push to SDL once we have enough for a frame
+    if (audio_queue.size() >= 735) {
+        audio.push_samples(audio_queue.data(), (int)audio_queue.size());
+        audio_queue.clear();
+    }
 }

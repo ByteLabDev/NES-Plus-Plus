@@ -51,6 +51,7 @@ void Display::update() {
         }
         if (ImGui::BeginMenu("Debug")) {
             ImGui::MenuItem("Nametable Viewer", NULL, &show_nt_debugger);
+            ImGui::MenuItem("Sound Debugger", NULL, &show_sound_debugger);
             ImGui::EndMenu();
         }
         ImGui::EndMainMenuBar();
@@ -63,6 +64,7 @@ void Display::update_texture() {
 
 void Display::render() {
     draw_debug_windows();
+    draw_sound_debugger();
     update_texture();
     ImGui::Render();
 
@@ -175,4 +177,44 @@ void Display::draw_debug_windows() {
 
         ImGui::End();
     }
+}
+
+
+void Display::draw_sound_debugger() {
+    if (!show_sound_debugger) return;
+
+    ImGui::Begin("Sound Debugger", &show_sound_debugger);
+
+    auto& dbg = nes->apu.debug;
+
+    // --- Master Controls ---
+    ImGui::Text("Channel Toggles:");
+    ImGui::Checkbox("Pulse 1", &dbg.p1_enabled); ImGui::SameLine();
+    ImGui::Checkbox("Pulse 2", &dbg.p2_enabled); ImGui::SameLine();
+    ImGui::Checkbox("Triangle", &dbg.tri_enabled);
+    ImGui::Checkbox("DMC", &dbg.dmc_enabled);
+
+    ImGui::Separator();
+
+    // --- Waveform Visualization ---
+    // We use an overlay to show the "rolling" nature of the buffer
+    ImGui::Text("Pulse 1");
+    ImGui::PlotLines("##p1", dbg.p1_history, 100, dbg.write_idx, NULL, 0.0f, 15.0f, ImVec2(0, 50));
+
+    ImGui::Text("Pulse 2");
+    ImGui::PlotLines("##p2", dbg.p2_history, 100, dbg.write_idx, NULL, 0.0f, 15.0f, ImVec2(0, 50));
+
+    ImGui::Text("Triangle");
+    ImGui::PlotLines("##tri", dbg.tri_history, 100, dbg.write_idx, NULL, 0.0f, 15.0f, ImVec2(0, 50));
+
+    ImGui::Text("DMC");
+    ImGui::PlotLines("##dmc", dbg.dmc_history, 100, dbg.write_idx, NULL, 0.0f, 127.0f, ImVec2(0, 50));
+
+    ImGui::Separator();
+    ImGui::Text("Final Mixer Output");
+    ImGui::PushStyleColor(ImGuiCol_PlotLines, ImVec4(0.2f, 0.8f, 0.2f, 1.0f)); // Green for mixed
+    ImGui::PlotLines("##mixed", dbg.mixed_history, 100, dbg.write_idx, NULL, 0.0f, 1.0f, ImVec2(0, 80));
+    ImGui::PopStyleColor();
+
+    ImGui::End();
 }

@@ -30,4 +30,8 @@ private:
     bool show_nt_debugger = false;
     int selected_nt = 0;
     int hovered_attr_id = -1;
+
+    // Sound debugging
+    bool show_sound_debugger = false;
+    void draw_sound_debugger();
 };
