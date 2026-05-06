@@ -168,10 +168,10 @@ void APU::step() {
 	if (total_cycles % 2 == 0) {
 		pulse1.clock_timer();
 		pulse2.clock_timer();
+		clock_frame_counter();
 	}
 
 	// The Frame Counter manages high-level timing (approx 240Hz)
-	clock_frame_counter();
 
 	total_cycles++;
 
