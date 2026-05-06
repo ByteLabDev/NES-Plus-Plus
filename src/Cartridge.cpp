@@ -2,9 +2,10 @@
 
 #include "Cartridge.h"
 #include <iostream>
+#include "Nes.h"
 
-Cartridge::Cartridge() {
-
+Cartridge::Cartridge(Nes* nesPtr) {
+	nes = nesPtr;
 }
 
 // Temp: Use NROM map until mappers class is added
@@ -83,6 +84,10 @@ bool Cartridge::load_rom(const std::string& filename) {
 
 	romPath = filename;
 	is_loaded = true;
+
+	nes->cpu6502.reset();
+	nes->ppu.reset();
+
 	return true;
 }
 

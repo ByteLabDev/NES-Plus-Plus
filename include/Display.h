@@ -24,6 +24,10 @@ private:
     SDL_Texture* nes_texture;
     bool m_running = true;
 
+    // Options menu
+    bool show_options_menu = false;
+    void draw_options_menu();
+
     // Nametable debugging
     SDL_Texture* debug_nt_texture = nullptr;
     uint32_t nt_buffer[256 * 240];

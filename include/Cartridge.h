@@ -7,6 +7,8 @@
 #include <fstream>
 #include "Mapper.h"
 
+class Nes;
+
 struct iNES_Header {
 	char	name[4];		// Constant $4E $45 $53 $1A (ASCII "NES" followed by MS-DOS end-of-file) 
 	uint8_t prg_rom_banks;	// Size of PRG ROM in 16 KB units 
@@ -26,7 +28,7 @@ class Cartridge {
 			VERTICAL,
 			FOUR_SCREEN
 		};
-		Cartridge();
+		Cartridge(Nes* nesPtr);
 		bool read(uint16_t addr, uint8_t& data);
 		bool write(uint16_t addr, uint8_t data);
 		bool load_rom(const std::string& filename);
@@ -34,6 +36,7 @@ class Cartridge {
 		MirrorMode get_mirror_mode();
 		bool is_loaded = false;
 	private:
+		Nes* nes;
 		std::string romPath;
 		std::vector<uint8_t> prgRom;	// Program instructions
 		std::vector<uint8_t> chrRom;	// Character data

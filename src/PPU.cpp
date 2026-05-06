@@ -410,11 +410,14 @@ void PPU::reset() {
 	ctrl.reg = 0x0;
 	mask.reg = 0x0;
 	status.reg = status.reg & 0b10000000; // U??x xxxx
-
 	fine_x = 0x0;
 	addr_latch = false;
-
 	vram_read_buffer = 0x0;
+	vram_addr = 0x0;
+	tmp_vram_addr = 0x0;
+	cycles = 0;
+	scanline = 0;
+	frame_ready = false;
 }
 
 void PPU::coarse_x_increment() {

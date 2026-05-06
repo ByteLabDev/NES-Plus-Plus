@@ -20,7 +20,7 @@ int main(int argc, const char* argv[]) {
     
     std::chrono::nanoseconds frame_target_time(1000000000 / nes.target_frame_rate);
 
-	Cartridge cartridge = Cartridge();
+	Cartridge cartridge = Cartridge(&nes);
 
 	nes.insert_cartridge(&cartridge);
 

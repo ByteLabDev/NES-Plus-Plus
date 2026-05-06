@@ -49,6 +49,15 @@ void Display::update() {
             }
             ImGui::EndMenu();
         }
+        if (ImGui::BeginMenu("Edit")) {
+            if (ImGui::MenuItem("Options", NULL, &show_options_menu));
+            if (ImGui::MenuItem("Reset")) {
+                nes->cpu6502.reset();
+                nes->ppu.reset();
+                //nes->apu.reset();
+            }
+            ImGui::EndMenu();
+        }
         if (ImGui::BeginMenu("Debug")) {
             ImGui::MenuItem("Nametable Viewer", NULL, &show_nt_debugger);
             ImGui::MenuItem("Sound Debugger", NULL, &show_sound_debugger);
@@ -63,6 +72,7 @@ void Display::update_texture() {
 }
 
 void Display::render() {
+    draw_options_menu();
     draw_debug_windows();
     draw_sound_debugger();
     update_texture();
@@ -115,7 +125,6 @@ void SDLCALL file_callback(void* userdata, const char* const* filelist, int filt
     if (filelist && filelist[0]) {
         const char* selected_path = filelist[0];
         nes->cartridge->load_rom(selected_path);
-        nes->cpu6502.reset();
     }
 }
 
@@ -126,6 +135,25 @@ void Display::open_file_dialog() {
     };
 
     SDL_ShowOpenFileDialog(file_callback, nes, m_window, filters, 2, NULL, false);
+}
+
+void Display::draw_options_menu() {
+    if (!show_options_menu) return;
+
+    ImGui::Begin("Options", &show_options_menu);
+
+    const char* region_names[] = { "NTSC", "PAL" };
+    static int selected_region_index = (nes->region == Common::PAL) ? 1 : 0;
+
+    if (ImGui::Combo("Region", &selected_region_index, region_names, IM_ARRAYSIZE(region_names)))
+    {
+        Common::Region new_region = (selected_region_index == 1) ? Common::PAL : Common::NTSC;
+
+        nes->set_region(new_region);
+        nes->apu.set_region(new_region);
+    }
+
+    ImGui::End();
 }
 
 void Display::draw_debug_windows() {
