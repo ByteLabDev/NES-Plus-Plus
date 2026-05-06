@@ -23,7 +23,7 @@ FetchContent_Declare(
 FetchContent_MakeAvailable(imgui)
 FetchContent_GetProperties(imgui SOURCE_DIR IMGUI_SOURCE_DIR)
 
-file(GLOB_RECURSE SOURCES "src/*.cpp") # Add src files
+file(GLOB_RECURSE SOURCES "src/*.cpp" "src/resources.rc") # Add src files
 
 set(IMGUI_SOURCES
     ${IMGUI_SOURCE_DIR}/imgui.cpp
@@ -34,6 +34,11 @@ set(IMGUI_SOURCES
     ${IMGUI_SOURCE_DIR}/backends/imgui_impl_sdl3.cpp
     ${IMGUI_SOURCE_DIR}/backends/imgui_impl_sdlrenderer3.cpp
 )
+
+# Add icon to exe
+if(WIN32)
+    set(EXE_RESOURCES resources.rc)
+endif()
 
 # Add executable target with source files listed in SOURCE_FILES variable
 add_executable(${PROJECT_NAME} ${SOURCES} ${IMGUI_SOURCES})

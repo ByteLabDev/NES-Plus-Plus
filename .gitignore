@@ -367,3 +367,4 @@ vcpkg_installed/
 out/
 
 CMakeSettings.json
+[Bb]uild/
