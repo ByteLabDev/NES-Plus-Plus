@@ -69,10 +69,18 @@ bool APU::write(uint16_t addr, uint8_t data) {
 			triangle.linear_reload_flag = true;
 			break;
 		case 0x400C:	// Noise - Envelope loop / length counter halt (L), constant volume (C), volume/envelope (V)
+			noise.ctrl.reg = data;
+			noise.envelope.loop = noise.ctrl.halt;
+			noise.envelope.constant_volume = noise.ctrl.constant;
+			noise.envelope.reload_value = noise.ctrl.volume;
 			break;
 		case 0x400E:	// Noise - Noise mode (M), noise period (P) 
+			noise.mode = (data & 0x80);
+			noise.timer_reload = (nes->region == Common::Region::PAL) ? noise.pal_rates[data & 0x0F] : noise.ntsc_rates[data & 0x0F];
 			break;
 		case 0x400F:	// Noise - Length counter load (L) 
+			noise.length_counter = length_table[(data & 0xF8) >> 3];
+			noise.envelope.start = true;
 			break;
 		case 0x4010:	// DMC - IRQ enable (I), loop (L), frequency (R)
 			dmc.irq_enabled = (data & 0x80);
@@ -99,12 +107,13 @@ bool APU::write(uint16_t addr, uint8_t data) {
 			pulse1.enabled = data & 0x01;
 			pulse2.enabled = data & 0x02;
 			triangle.enabled = data & 0x04;
-			// noise.enabled = data & 0x08;
+			noise.enabled = data & 0x08;
 			dmc.enabled = data & 0x10;
 
 			if (!pulse1.enabled)   pulse1.length_counter = 0;
 			if (!pulse2.enabled)   pulse2.length_counter = 0;
 			if (!triangle.enabled) triangle.length_counter = 0;
+			if (!noise.enabled) noise.length_counter = 0;
 
 			if (dmc.enabled) {
 				if (dmc.bytes_remaining == 0) {
@@ -153,6 +162,7 @@ void APU::step() {
 	// Clock triangle and DMC every CPU cycle
 	triangle.clock_timer();
 	dmc.clock_timer(this);
+	noise.clock_timer();
 
 	// Clock pulse timers every other CPU cycle
 	if (total_cycles % 2 == 0) {
@@ -181,6 +191,8 @@ void APU::clock_frame_counter() {
 		pulse1.envelope.clock();
 		pulse2.envelope.clock();
 
+		noise.envelope.clock();
+
 		// Step 1 and 3 are the "Half-Frame" signals
 		if (frame_value == current_seq.steps[1] || frame_value == current_seq.steps[3]) {
 			pulse1.clock_length_counter();
@@ -189,7 +201,7 @@ void APU::clock_frame_counter() {
 			pulse2.clock_sweep(2);
 
 			triangle.clock_length_counter();
-
+			noise.clock_length_counter();
 		}
 	}
 
@@ -270,9 +282,7 @@ float APU::get_output() {
 	float p2 = debug.p2_enabled ? (float)pulse2.get_sample() : 0.0f;
 	float tri = debug.tri_enabled ? (float)triangle.get_sample() : 0.0f;
 	float dmc_val = debug.dmc_enabled ? (float)dmc.get_sample() : 0.0f;
-
-	// Add DMC (and Noise as 0 for now)
-	float noise_val = 0.0f; // Update this once you implement Noise
+	float noise_val = debug.noise_enabled ? (float)noise.get_sample() : 0.0f;
 
 	// 1. Pulse Mixer
 	float pulse_out = 0.0f;
@@ -282,11 +292,7 @@ float APU::get_output() {
 
 	// 2. TND Mixer (Triangle, Noise, DMC)
 	float tnd_out = 0.0f;
-
-	// The denominator uses specific weights for each channel:
-	// Triangle: 8227, Noise: 12241, DMC: 22638
 	float tnd_denominator = (tri / 8227.0f) + (noise_val / 12241.0f) + (dmc_val / 22638.0f);
-
 	if (tnd_denominator != 0.0f) {
 		tnd_out = 159.79f / ((1.0f / tnd_denominator) + 100.0f);
 	}
@@ -307,6 +313,7 @@ void APU::update_debug_history() {
 	debug.p2_history[debug.write_idx] = (float)pulse2.get_sample();
 	debug.tri_history[debug.write_idx] = (float)triangle.get_sample();
 	debug.dmc_history[debug.write_idx] = (float)dmc.get_sample();
+	debug.noise_history[debug.write_idx] = (float)noise.get_sample();
 	debug.mixed_history[debug.write_idx] = get_output();
 
 	debug.write_idx = (debug.write_idx + 1) % 100;

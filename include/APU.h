@@ -22,6 +22,7 @@ class APU {
 			float p2_history[100];
 			float tri_history[100];
 			float dmc_history[100];
+			float noise_history[100];
 			float mixed_history[100];
 			int write_idx = 0;
 
@@ -29,6 +30,7 @@ class APU {
 			bool p2_enabled = true;
 			bool dmc_enabled = true;
 			bool tri_enabled = true;
+			bool noise_enabled = true;
 		} debug;
 	private:
 		Nes* nes;
@@ -58,6 +60,39 @@ class APU {
 			uint8_t reg;
 		};
 
+		struct Envelope {
+			bool start = false;
+			bool loop = false;
+			bool constant_volume = false;
+			uint8_t volume_out = 0;
+			uint8_t decay_count = 0;
+			uint8_t divider = 0;
+			uint8_t reload_value = 0; // The 'V' in the registers
+
+			void clock() {
+				if (!start) {
+					if (divider == 0) {
+						divider = reload_value; // The 'V' value from $4000
+						if (decay_count > 0) {
+							decay_count--;
+						}
+						else if (loop) {
+							decay_count = 15;
+						}
+					}
+					else {
+						divider--;
+					}
+				}
+				else {
+					start = false;
+					decay_count = 15;
+					divider = reload_value;
+				}
+				volume_out = constant_volume ? reload_value : decay_count;
+			}
+		};
+
 		struct PulseChannel {
 			PulseControl ctrl;
 			uint16_t timer_reload;
@@ -74,39 +109,6 @@ class APU {
 				uint8_t shift = 0;
 				bool reload = false;
 			} sweep;
-
-			struct Envelope {
-				bool start = false;
-				bool loop = false;
-				bool constant_volume = false;
-				uint8_t volume_out = 0;
-				uint8_t decay_count = 0;
-				uint8_t divider = 0;
-				uint8_t reload_value = 0; // The 'V' in the registers
-
-				void clock() {
-					if (!start) {
-						if (divider == 0) {
-							divider = reload_value; // The 'V' value from $4000
-							if (decay_count > 0) {
-								decay_count--;
-							}
-							else if (loop) {
-								decay_count = 15;
-							}
-						}
-						else {
-							divider--;
-						}
-					}
-					else {
-						start = false;
-						decay_count = 15;
-						divider = reload_value;
-					}
-					volume_out = constant_volume ? reload_value : decay_count;
-				}
-			};
 
 			Envelope envelope;
 
@@ -262,12 +264,57 @@ class APU {
 			void clock_timer(APU* apu_ptr);
 		};
 
+		struct NoiseChannel {
+			PulseControl ctrl;
+			Envelope envelope;
+
+			uint16_t timer_reload = 0;
+			uint16_t timer_value = 0;
+			uint8_t  length_counter = 0;
+			bool     enabled = false;
+			bool     mode = false;
+			uint16_t shift_register = 1; // Must be non-zero at reset
+
+			const uint16_t ntsc_rates[16] = {
+				4, 8, 16, 32, 64, 96, 128, 160, 202, 254, 380, 508, 762, 1016, 2034, 4068
+			};
+
+			const uint16_t pal_rates[16] = {
+				4, 8, 14, 30, 60, 88, 118, 148, 188, 236, 354, 472, 708, 944, 1890, 3778
+			};
+
+			void clock_timer() {
+				if (timer_value == 0) {
+					timer_value = timer_reload;
+
+					// LFSR Logic
+					// Feedback bit is bit 0 XOR (bit 1 if mode else bit 6)
+					uint16_t feedback = (shift_register & 0x01) ^ ((mode ? (shift_register >> 6) : (shift_register >> 1)) & 0x01);
+					shift_register >>= 1;
+					shift_register |= (feedback << 14);
+				}
+				else {
+					timer_value--;
+				}
+			}
+
+			void clock_length_counter() {
+				if (length_counter > 0 && !ctrl.halt) {
+					length_counter--;
+				}
+			}
+
+			uint8_t get_sample() {
+				if (length_counter == 0 || (shift_register & 0x01)) return 0;
+				return envelope.volume_out;
+			}
+		};
+
 		PulseChannel pulse1;
 		PulseChannel pulse2;
-
 		TriangleChannel triangle;
-
 		DmcChannel dmc;
+		NoiseChannel noise;
 
 		uint64_t total_cycles;
 		uint32_t frame_value = 0;

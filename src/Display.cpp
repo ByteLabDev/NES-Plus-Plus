@@ -192,6 +192,7 @@ void Display::draw_sound_debugger() {
     ImGui::Checkbox("Pulse 1", &dbg.p1_enabled); ImGui::SameLine();
     ImGui::Checkbox("Pulse 2", &dbg.p2_enabled); ImGui::SameLine();
     ImGui::Checkbox("Triangle", &dbg.tri_enabled);
+    ImGui::Checkbox("Noise", &dbg.noise_enabled);
     ImGui::Checkbox("DMC", &dbg.dmc_enabled);
 
     ImGui::Separator();
@@ -209,6 +210,9 @@ void Display::draw_sound_debugger() {
 
     ImGui::Text("DMC");
     ImGui::PlotLines("##dmc", dbg.dmc_history, 100, dbg.write_idx, NULL, 0.0f, 127.0f, ImVec2(0, 50));
+
+    ImGui::Text("Noise");
+    ImGui::PlotLines("##dmc", dbg.noise_history, 100, dbg.write_idx, NULL, 0.0f, 15.0f, ImVec2(0, 50));
 
     ImGui::Separator();
     ImGui::Text("Final Mixer Output");
