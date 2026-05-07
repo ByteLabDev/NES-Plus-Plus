@@ -10,6 +10,7 @@ Display::Display(Nes* nesPtr) {
     nes = nesPtr;
     SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO);
     m_window = SDL_CreateWindow("Nes Plus Plus", 1280, 720, SDL_WINDOW_RESIZABLE | SDL_WINDOW_HIGH_PIXEL_DENSITY);
+    SDL_SetWindowAspectRatio(m_window, 256.0f / 240.0f, 256.0f / 240.0f);
     m_renderer = SDL_CreateRenderer(m_window, NULL);
     nes_texture = SDL_CreateTexture(m_renderer,
         SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_STREAMING, 256, 240);
@@ -84,36 +85,18 @@ void Display::render() {
     int window_w, window_h;
     SDL_GetWindowSize(m_window, &window_w, &window_h);
 
-    // Account for the menu bar height
-    int menu_height = 20;
-    int available_h = window_h - menu_height;
+    const int menu_height = 20; // MainMenuBar height
 
-    // Lock aspect ratio
-    float target_aspect = 256.0f / 240.0f;
-    float window_aspect = (float)window_w / (float)available_h;
+    float aspect = 256.0f / 240.0f;
 
-    SDL_Rect dest;
+    SDL_FRect fdest;
+    fdest.w = (float)window_w;
+    fdest.h = (float)window_w / aspect;
+    fdest.x = 0;
+    fdest.y = menu_height + ((window_h - menu_height) - fdest.h) / 2.0f;
 
-    if (window_aspect > target_aspect) {
-        // Window is too wide (Pillarboxing)
-        dest.h = available_h;
-        dest.w = (int)(available_h * target_aspect);
-        dest.x = (window_w - dest.w) / 2;
-        dest.y = menu_height;
-    }
-    else {
-        // Window is too tall (Letterboxing)
-        dest.w = window_w;
-        dest.h = (int)(window_w / target_aspect);
-        dest.x = 0;
-        dest.y = menu_height + (available_h - dest.h) / 2;
-    }
-
-    // Render image
-    SDL_FRect fdest = { (float)dest.x, (float)dest.y, (float)dest.w, (float)dest.h };
     SDL_RenderTexture(m_renderer, nes_texture, NULL, &fdest);
 
-    // Draw menu bar
     ImGui_ImplSDLRenderer3_RenderDrawData(ImGui::GetDrawData(), m_renderer);
 
     SDL_RenderPresent(m_renderer);
@@ -143,11 +126,11 @@ void Display::draw_options_menu() {
     ImGui::Begin("Options", &show_options_menu);
 
     const char* region_names[] = { "NTSC", "PAL" };
-    static int selected_region_index = (nes->region == Common::PAL) ? 1 : 0;
+    static int selected_region_index = (nes->region == Common::NTSC) ? 0 : 1;
 
     if (ImGui::Combo("Region", &selected_region_index, region_names, IM_ARRAYSIZE(region_names)))
     {
-        Common::Region new_region = (selected_region_index == 1) ? Common::PAL : Common::NTSC;
+        Common::Region new_region = (selected_region_index == 0) ? Common::NTSC : Common::PAL;
 
         nes->set_region(new_region);
         nes->apu.set_region(new_region);

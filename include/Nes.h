@@ -14,7 +14,7 @@
 
 class Nes {
 	public:
-		Common::Region region;
+		Common::Region region = Common::Region::NTSC;
 		float ppu_ratio;
 		int target_frame_rate;
 		int cpu_clock_speed;
