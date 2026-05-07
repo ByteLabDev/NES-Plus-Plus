@@ -97,6 +97,24 @@ Cpu6502::Cpu6502(Nes* nesPtr) {
 
 	// Other
 	il[0xEA] = { "NOP", &Cpu6502::NOP, &Cpu6502::IMP, 2 };
+
+	// ----- Illegal Opcodes -----
+
+	// Read-Modify-Write Instructions
+	il[0xC3] = { "DCP", &Cpu6502::DCP, &Cpu6502::IZX, 8 }; il[0xC7] = { "DCP", &Cpu6502::DCP, &Cpu6502::ZP0, 5 }; il[0xCF] = { "DCP", &Cpu6502::DCP, &Cpu6502::AB0, 6 };
+	il[0xD3] = { "DCP", &Cpu6502::DCP, &Cpu6502::IZY, 8 }; il[0xD7] = { "DCP", &Cpu6502::DCP, &Cpu6502::ZPX, 6 }; il[0xDB] = { "DCP", &Cpu6502::DCP, &Cpu6502::ABY, 7 };
+	il[0xDF] = { "DCP", &Cpu6502::DCP, &Cpu6502::ABX, 7 }; il[0xE3] = { "ISC", &Cpu6502::ISC, &Cpu6502::IZX, 8 }; il[0xE7] = { "ISC", &Cpu6502::ISC, &Cpu6502::ZP0, 5 };
+	il[0xEF] = { "ISC", &Cpu6502::ISC, &Cpu6502::AB0, 6 }; il[0xF3] = { "ISC", &Cpu6502::ISC, &Cpu6502::IZY, 8 }; il[0xF7] = { "ISC", &Cpu6502::ISC, &Cpu6502::ZPX, 6 };
+	il[0xFB] = { "ISC", &Cpu6502::ISC, &Cpu6502::ABY, 7 }; il[0xFF] = { "ISC", &Cpu6502::ISC, &Cpu6502::ABX, 7 }; il[0x23] = { "RLA", &Cpu6502::RLA, &Cpu6502::IZX, 8 };
+	il[0x27] = { "RLA", &Cpu6502::RLA, &Cpu6502::ZP0, 5 }; il[0x2F] = { "RLA", &Cpu6502::RLA, &Cpu6502::AB0, 6 }; il[0x33] = { "RLA", &Cpu6502::RLA, &Cpu6502::IZY, 8 };
+	il[0x37] = { "RLA", &Cpu6502::RLA, &Cpu6502::ZPX, 6 }; il[0x3B] = { "RLA", &Cpu6502::RLA, &Cpu6502::ABY, 7 }; il[0x3F] = { "RLA", &Cpu6502::RLA, &Cpu6502::ABX, 7 };
+	il[0x63] = { "RRA", &Cpu6502::RRA, &Cpu6502::IZX, 8 }; il[0x67] = { "RRA", &Cpu6502::RRA, &Cpu6502::ZP0, 5 }; il[0x6F] = { "RRA", &Cpu6502::RRA, &Cpu6502::AB0, 6 };
+	il[0x73] = { "RRA", &Cpu6502::RRA, &Cpu6502::IZY, 8 }; il[0x77] = { "RRA", &Cpu6502::RRA, &Cpu6502::ZPX, 6 }; il[0x7B] = { "RRA", &Cpu6502::RRA, &Cpu6502::ABY, 7 };
+	il[0x7F] = { "RRA", &Cpu6502::RRA, &Cpu6502::ABX, 7 }; il[0x03] = { "SLO", &Cpu6502::SLO, &Cpu6502::IZX, 8 }; il[0x07] = { "SLO", &Cpu6502::SLO, &Cpu6502::ZP0, 5 };
+	il[0x0F] = { "SLO", &Cpu6502::SLO, &Cpu6502::AB0, 6 }; il[0x13] = { "SLO", &Cpu6502::SLO, &Cpu6502::IZY, 8 }; il[0x17] = { "SLO", &Cpu6502::SLO, &Cpu6502::ZPX, 6 };
+	il[0x1B] = { "SLO", &Cpu6502::SLO, &Cpu6502::ABY, 7 }; il[0x1F] = { "SLO", &Cpu6502::SLO, &Cpu6502::ABX, 7 }; il[0x43] = { "SRE", &Cpu6502::SRE, &Cpu6502::IZX, 8 };
+	il[0x47] = { "SRE", &Cpu6502::SRE, &Cpu6502::ZP0, 5 }; il[0x4F] = { "SRE", &Cpu6502::SRE, &Cpu6502::AB0, 6 }; il[0x53] = { "SRE", &Cpu6502::SRE, &Cpu6502::IZY, 8 };
+	il[0x57] = { "SRE", &Cpu6502::SRE, &Cpu6502::ZPX, 6 }; il[0x5B] = { "SRE", &Cpu6502::SRE, &Cpu6502::ABY, 7 }; il[0x5F] = { "SRE", &Cpu6502::SRE, &Cpu6502::ABX, 7 };
 }
 
 void Cpu6502::init() {
@@ -598,7 +616,122 @@ uint8_t Cpu6502::NOP() {
 	return 0;
 }
 
+// ----- Illegal Opcodes -----
 
+// DCP = DEC + CMP
+uint8_t Cpu6502::DCP() {
+	uint8_t mem = nes->bus.read(target_addr);
+	
+	// DEC
+	mem--;
+
+	// Write back to memory
+	nes->bus.write(target_addr, mem);
+
+	// CMP
+	uint8_t cmp = acc - mem;
+	flags.c = (acc >= mem);
+	flags.z = (acc == mem);
+	flags.n = (cmp & 0x80) ? 1 : 0;
+
+	return 0;
+}
+
+// ISC = INC + SBC
+uint8_t Cpu6502::ISC() {
+	uint8_t mem = nes->bus.read(target_addr);
+
+	// INC
+	mem++;
+	
+	// Write back to memory
+	nes->bus.write(target_addr, mem);
+
+	// SBC
+	uint16_t flipped_mem = (uint16_t)mem ^ 0x00FF;
+	uint16_t result = acc + flipped_mem + flags.c;
+	flags.c = (result > 0xFF) ? 1 : 0;
+	flags.v = ((result ^ (uint16_t)acc) & (result ^ flipped_mem) & 0x80) ? 1 : 0;
+	set_nz(result);
+	acc = (uint8_t)result;
+	return 0;
+}
+
+// RLA = ROL + AND
+uint8_t Cpu6502::RLA() {
+	uint8_t mem = nes->bus.read(target_addr);
+
+	uint8_t old_carry = flags.c;
+	flags.c = (mem >> 7) & 0x01;
+
+	mem = (mem << 1) | old_carry;
+
+	// Write back to memory
+	nes->bus.write(target_addr, mem);
+
+	// AND
+	acc = acc & mem;
+	set_nz(acc);
+	return 0;
+}
+
+// RRA = ROR + ADC
+uint8_t Cpu6502::RRA() {
+	uint8_t mem = nes->bus.read(target_addr);
+
+	// ROR
+	uint8_t old_carry = flags.c;
+	flags.c = mem & 0x01;
+	mem = (mem >> 1) | (old_carry << 7);
+
+	// Write back to memory
+	nes->bus.write(target_addr, mem);
+	
+	// ADC
+	uint16_t result = (uint16_t)acc + (uint16_t)mem + (uint16_t)flags.c;
+	flags.c = (result > 0xFF) ? 1 : 0;
+	flags.v = ((result ^ (uint16_t)acc) & (result ^ (uint16_t)mem) & 0x80) ? 1 : 0;
+	set_nz(result);
+	acc = result;
+	return 0;
+}
+
+// SLO = ASL + ORA
+uint8_t Cpu6502::SLO() {
+	uint8_t mem = nes->bus.read(target_addr);
+
+	// ASL
+	flags.c = (mem >> 7) & 0x01;
+	mem <<= 1;
+
+	// Write back to memory
+	nes->bus.write(target_addr, mem);
+
+	// ORA
+	acc = acc | mem;
+
+	set_nz(acc);
+
+	return 0;
+}
+
+// SRE = LSR + EOR
+uint8_t Cpu6502::SRE() {
+	// SRE
+	uint8_t mem = nes->bus.read(target_addr);
+	flags.c = mem & 0x01; // Bit 0
+	mem >>= 1;
+	flags.z = (mem == 0) ? 1 : 0;
+	flags.n = 0;
+
+	// Write back to memory
+	nes->bus.write(target_addr, mem);
+
+	// EOR
+	acc = acc ^ mem;
+	set_nz(acc);
+	return 0;
+}
 
 
 

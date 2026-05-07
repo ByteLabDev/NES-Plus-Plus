@@ -103,6 +103,11 @@ class Cpu6502 {
 		// Other
 		uint8_t NOP();
 
+		// ----- Illegal Opcodes -----
+
+		// Read-Modify-Write Instructions
+		uint8_t DCP(); uint8_t ISC(); uint8_t RLA(); uint8_t RRA(); uint8_t SLO(); uint8_t SRE();
+
 		// ----- Addressing Modes -----
 		uint8_t IMP();	uint8_t ACC();	uint8_t IMM();
 		uint8_t ZP0();	uint8_t ZPX();	uint8_t ZPY();
