@@ -813,7 +813,12 @@ uint8_t Cpu6502::ABX() {
 
 	target_addr = addr + x_ind;
 
-	if ((addr & 0xFF00) != (target_addr & 0xFF00)) return 1; // Oops cycle
+	// Check if a page boundary is crossed
+	if ((addr & 0xFF00) != (target_addr & 0xFF00)) {
+		uint16_t dummy_addr = (hi << 8) | (uint8_t)(lo + x_ind);
+		nes->bus.read(dummy_addr);
+		return 1; // Oops cycle
+	}
 
 	return 0;
 }
@@ -900,7 +905,12 @@ uint8_t Cpu6502::IZY() {
 	uint16_t base_addr = (hi << 8) | lo;
 	target_addr = base_addr + y_ind;
 
-	if ((base_addr & 0xFF00) != (target_addr & 0xFF00)) return 1; // Oops cycle
+	// Check if a page boundary is crossed
+	if ((base_addr & 0xFF00) != (target_addr & 0xFF00)) {
+		uint16_t dummy_addr = (hi << 8) | (uint8_t)(lo + x_ind);
+		nes->bus.read(dummy_addr);
+		return 1; // Oops cycle
+	}
 
 	return 0;
 }
