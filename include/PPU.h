@@ -125,6 +125,8 @@ class PPU {
 		Sprite		sprite_buffer[8];			// Sprite buffer for current scanline
 		uint8_t		sprite_count;				// Number of sprites rendered on a single scanline
 
+		uint8_t		open_bus = 0x00;			// Tracks the last value on the PPU data bus
+
 		// ----- Helper Methods -----
 		uint16_t get_mirror_index(uint16_t addr);
 		void render_pixel();

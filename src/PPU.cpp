@@ -321,7 +321,6 @@ void PPU::transfer_y_address() {
 }
 
 bool PPU::read(uint16_t addr, uint8_t& data) {
-	//std::cout << "READ: 0x" << std::hex << addr << std::endl;
 	uint16_t reg = addr % 8; // Mirrors every 8 bytes from $2008 to $3FFF
 	switch (reg) {
 	case 0x2:	// PPUSTATUS
@@ -331,6 +330,7 @@ bool PPU::read(uint16_t addr, uint8_t& data) {
 		break;
 	case 0x4:	// OAMDATA
 		data = oam_data[oam_addr];
+		open_bus = data;
 		break;
 	case 0x7:	// PPUDATA
 		data = vram_read_buffer;
@@ -340,22 +340,24 @@ bool PPU::read(uint16_t addr, uint8_t& data) {
 			data = vram_read_buffer;
 		}
 
+		open_bus = data;
 		vram_addr += (ctrl.increment_mode ? 32 : 1); // Increment by bit 2 of $2000 (0: add 1, going across; 1: add 32, going down)
-
 		vram_addr &= 0x3FFF; // The PPU address space is 14-bit, spanning $0000–$3FFF.
 		break;
+	default:
+		data = open_bus;
+		break;
 	}
+
+	open_bus = data;
 
 	return true;
 }
 
 bool PPU::write(uint16_t addr, uint8_t data) {
-	//std::cout << "WRITE: 0x" << std::hex << addr << std::endl;
+	open_bus = data;
+
 	uint16_t reg = addr % 8; // Mirrors every 8 bytes from $2008 to $3FFF
-
-	//if (data != 0) std::cout << "case: 0x" << reg << " data : 0x" << std::hex << data << std::endl;
-
-
 	switch (reg) {
 	case 0x0:	// PPUCTRL
 		ctrl.reg = data;

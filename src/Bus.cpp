@@ -75,9 +75,9 @@ void Bus::write(uint16_t addr, uint8_t data) {
 	// PPU Registers:			($2000 – $3FFF) (8192 - 16383)
 	// Non-mirror range:		($2000 – $2007) (8192 - 8200)
 	if (addr >= 0x2000 && addr <= 0x3FFF) {
-		uint16_t w_addr = (addr - 0x2000) % 8; // Wrap every 8 steps
+		uint16_t w_addr = 0x2000 + (addr % 8); // Wrap every 8 steps
 		if (nes != nullptr) {
-			nes->ppu.write(addr, data);
+			nes->ppu.write(w_addr, data);
 		}
 		return;
 	}
