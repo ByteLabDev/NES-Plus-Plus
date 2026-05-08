@@ -276,13 +276,15 @@ uint8_t Cpu6502::SBC() {
 }
 uint8_t Cpu6502::INC() {
 	uint8_t mem = nes->bus.read(target_addr);
-	nes->bus.write(target_addr, mem++);
+	nes->bus.write(target_addr, mem);
+	mem++;
 	nes->bus.write(target_addr, mem);
 	set_nz(mem);
 	return 0;
 }
 uint8_t Cpu6502::DEC() {
     uint8_t mem = nes->bus.read(target_addr);
+	nes->bus.write(target_addr, mem);
     mem--;
     nes->bus.write(target_addr, mem);
     set_nz(mem);
@@ -621,7 +623,8 @@ uint8_t Cpu6502::NOP() {
 // DCP = DEC + CMP
 uint8_t Cpu6502::DCP() {
 	uint8_t mem = nes->bus.read(target_addr);
-	
+	nes->bus.write(target_addr, mem);
+
 	// DEC
 	mem--;
 
@@ -640,6 +643,7 @@ uint8_t Cpu6502::DCP() {
 // ISC = INC + SBC
 uint8_t Cpu6502::ISC() {
 	uint8_t mem = nes->bus.read(target_addr);
+	nes->bus.write(target_addr, mem);
 
 	// INC
 	mem++;
@@ -660,6 +664,7 @@ uint8_t Cpu6502::ISC() {
 // RLA = ROL + AND
 uint8_t Cpu6502::RLA() {
 	uint8_t mem = nes->bus.read(target_addr);
+	nes->bus.write(target_addr, mem);
 
 	uint8_t old_carry = flags.c;
 	flags.c = (mem >> 7) & 0x01;
@@ -678,6 +683,7 @@ uint8_t Cpu6502::RLA() {
 // RRA = ROR + ADC
 uint8_t Cpu6502::RRA() {
 	uint8_t mem = nes->bus.read(target_addr);
+	nes->bus.write(target_addr, mem);
 
 	// ROR
 	uint8_t old_carry = flags.c;
@@ -699,6 +705,7 @@ uint8_t Cpu6502::RRA() {
 // SLO = ASL + ORA
 uint8_t Cpu6502::SLO() {
 	uint8_t mem = nes->bus.read(target_addr);
+	nes->bus.write(target_addr, mem);
 
 	// ASL
 	flags.c = (mem >> 7) & 0x01;
@@ -717,8 +724,10 @@ uint8_t Cpu6502::SLO() {
 
 // SRE = LSR + EOR
 uint8_t Cpu6502::SRE() {
-	// SRE
 	uint8_t mem = nes->bus.read(target_addr);
+	nes->bus.write(target_addr, mem);
+
+	// LSR
 	flags.c = mem & 0x01; // Bit 0
 	mem >>= 1;
 	flags.z = (mem == 0) ? 1 : 0;
