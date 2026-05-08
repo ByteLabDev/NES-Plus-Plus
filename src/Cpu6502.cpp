@@ -102,6 +102,13 @@ Cpu6502::Cpu6502(Nes* nesPtr) {
 
 	// ----- Illegal Opcodes -----
 
+	// Combined operations
+	il[0x4B] = { "ALR", &Cpu6502::ALR, &Cpu6502::IMM, 2 }; il[0x0B] = { "ANC", &Cpu6502::ANC, &Cpu6502::IMM, 2 }; il[0x2B] = { "ANC", &Cpu6502::ANC, &Cpu6502::IMM, 2 };
+	il[0x6B] = { "ARR", &Cpu6502::ARR, &Cpu6502::IMM, 2 }; il[0xCB] = { "AXS", &Cpu6502::AXS, &Cpu6502::IMM, 2 }; il[0xA3] = { "LAX", &Cpu6502::LAX, &Cpu6502::IZX, 6 };
+	il[0xA7] = { "LAX", &Cpu6502::LAX, &Cpu6502::ZP0, 3 }; il[0xAF] = { "LAX", &Cpu6502::LAX, &Cpu6502::AB0, 4 }; il[0xB3] = { "LAX", &Cpu6502::LAX, &Cpu6502::IZY, 5 };
+	il[0xB7] = { "LAX", &Cpu6502::LAX, &Cpu6502::ZPY, 4 }; il[0xBF] = { "LAX", &Cpu6502::LAX, &Cpu6502::ABY, 4 }; il[0x83] = { "SAX", &Cpu6502::SAX, &Cpu6502::IZX, 6 };
+	il[0x87] = { "SAX", &Cpu6502::SAX, &Cpu6502::ZP0, 3 }; il[0x8F] = { "SAX", &Cpu6502::SAX, &Cpu6502::AB0, 4 }; il[0x97] = { "SAX", &Cpu6502::SAX, &Cpu6502::ZPY, 4 };
+
 	// Read-Modify-Write Instructions
 	il[0xC3] = { "DCP", &Cpu6502::DCP, &Cpu6502::IZX, 8 }; il[0xC7] = { "DCP", &Cpu6502::DCP, &Cpu6502::ZP0, 5 }; il[0xCF] = { "DCP", &Cpu6502::DCP, &Cpu6502::AB0, 6 };
 	il[0xD3] = { "DCP", &Cpu6502::DCP, &Cpu6502::IZY, 8 }; il[0xD7] = { "DCP", &Cpu6502::DCP, &Cpu6502::ZPX, 6 }; il[0xDB] = { "DCP", &Cpu6502::DCP, &Cpu6502::ABY, 7 };
@@ -682,6 +689,65 @@ uint8_t Cpu6502::NOP() {
 }
 
 // ----- Illegal Opcodes -----
+
+// Combined Operations
+
+uint8_t Cpu6502::ALR() {
+	uint8_t mem = nes->bus.read(target_addr);
+	acc &= mem;
+
+	flags.c = acc & 0x01;
+	acc >>= 1;
+
+	set_nz(acc);
+
+	return 0;
+}
+uint8_t Cpu6502::ANC() {
+	uint8_t mem = nes->bus.read(target_addr);
+	acc = acc & mem;
+	set_nz(acc);
+	flags.c = flags.n;
+	return 0;
+}
+uint8_t Cpu6502::ARR() {
+	uint8_t mem = nes->bus.read(target_addr);
+	acc &= mem;
+
+	uint8_t old_carry = flags.c;
+	acc = (acc >> 1) | (old_carry << 7);
+
+	set_nz(acc);
+
+	flags.c = (acc >> 6) & 0x01;
+	flags.v = ((acc >> 6) ^ (acc >> 5)) & 0x01;
+
+	return 0;
+}
+uint8_t Cpu6502::AXS() {
+	uint8_t mem = nes->bus.read(target_addr);
+	uint8_t combined = acc & x_ind;
+	uint16_t result = (uint16_t)combined - (uint16_t)mem;
+
+	flags.c = (combined >= mem);
+	x_ind = (uint8_t)(result & 0xFF);
+	set_nz(x_ind);
+
+	return 0;
+}
+uint8_t Cpu6502::LAX() {
+	acc = nes->bus.read(target_addr);
+	x_ind = acc;
+	set_nz(x_ind);
+	return 0;
+}
+uint8_t Cpu6502::SAX() {
+	uint8_t result = acc & x_ind;
+	nes->bus.write(target_addr, result);
+	return 0;
+}
+
+// RMW Instructions
 
 // DCP = DEC + CMP
 uint8_t Cpu6502::DCP() {

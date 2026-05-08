@@ -1,3 +1,5 @@
+// include/Cpu6502.h
+
 #pragma once
 #include <cstdint>
 #include <fstream>
@@ -106,6 +108,9 @@ class Cpu6502 {
 		uint8_t NOP();
 
 		// ----- Illegal Opcodes -----
+
+		// Combined Operations
+		uint8_t ALR(); uint8_t ANC(); uint8_t ARR(); uint8_t AXS(); uint8_t LAX(); uint8_t SAX();
 
 		// Read-Modify-Write Instructions
 		uint8_t DCP(); uint8_t ISC(); uint8_t RLA(); uint8_t RRA(); uint8_t SLO(); uint8_t SRE();
