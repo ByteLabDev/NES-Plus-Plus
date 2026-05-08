@@ -117,6 +117,19 @@ Cpu6502::Cpu6502(Nes* nesPtr) {
 	il[0x1B] = { "SLO", &Cpu6502::SLO, &Cpu6502::ABY, 7 }; il[0x1F] = { "SLO", &Cpu6502::SLO, &Cpu6502::ABX, 7 }; il[0x43] = { "SRE", &Cpu6502::SRE, &Cpu6502::IZX, 8 };
 	il[0x47] = { "SRE", &Cpu6502::SRE, &Cpu6502::ZP0, 5 }; il[0x4F] = { "SRE", &Cpu6502::SRE, &Cpu6502::AB0, 6 }; il[0x53] = { "SRE", &Cpu6502::SRE, &Cpu6502::IZY, 8 };
 	il[0x57] = { "SRE", &Cpu6502::SRE, &Cpu6502::ZPX, 6 }; il[0x5B] = { "SRE", &Cpu6502::SRE, &Cpu6502::ABY, 7 }; il[0x5F] = { "SRE", &Cpu6502::SRE, &Cpu6502::ABX, 7 };
+
+	// NOPs
+	il[0x1A] = { "NOP", &Cpu6502::NOP, &Cpu6502::IMP, 2 }; il[0x3A] = { "NOP", &Cpu6502::NOP, &Cpu6502::IMP, 2 }; il[0x5A] = { "NOP", &Cpu6502::NOP, &Cpu6502::IMP, 2 };
+	il[0x7A] = { "NOP", &Cpu6502::NOP, &Cpu6502::IMP, 2 }; il[0xDA] = { "NOP", &Cpu6502::NOP, &Cpu6502::IMP, 2 }; il[0xEA] = { "NOP", &Cpu6502::NOP, &Cpu6502::IMP, 2 };
+	il[0xFA] = { "NOP", &Cpu6502::NOP, &Cpu6502::IMP, 2 }; il[0x80] = { "SKB", &Cpu6502::NOP, &Cpu6502::IMM, 2 }; il[0x82] = { "SKB", &Cpu6502::NOP, &Cpu6502::IMM, 2 };
+	il[0x89] = { "SKB", &Cpu6502::NOP, &Cpu6502::IMM, 2 }; il[0xC2] = { "SKB", &Cpu6502::NOP, &Cpu6502::IMM, 2 }; il[0xE2] = { "SKB", &Cpu6502::NOP, &Cpu6502::IMM, 2 };
+	il[0x0C] = { "IGN", &Cpu6502::NOP, &Cpu6502::AB0, 4 }; il[0x1C] = { "IGN", &Cpu6502::NOP, &Cpu6502::ABX, 4 }; il[0x3C] = { "IGN", &Cpu6502::NOP, &Cpu6502::ABX, 4 };
+	il[0x5C] = { "IGN", &Cpu6502::NOP, &Cpu6502::ABX, 4 }; il[0x7C] = { "IGN", &Cpu6502::NOP, &Cpu6502::ABX, 4 }; il[0xDC] = { "IGN", &Cpu6502::NOP, &Cpu6502::ABX, 4 };
+	il[0xFC] = { "IGN", &Cpu6502::NOP, &Cpu6502::ABX, 4 }; il[0x04] = { "IGN", &Cpu6502::NOP, &Cpu6502::ZP0, 3 }; il[0x44] = { "IGN", &Cpu6502::NOP, &Cpu6502::ZP0, 3 };
+	il[0x64] = { "IGN", &Cpu6502::NOP, &Cpu6502::ZP0, 3 }; il[0x14] = { "IGN", &Cpu6502::NOP, &Cpu6502::ZPX, 4 }; il[0x34] = { "IGN", &Cpu6502::NOP, &Cpu6502::ZPX, 4 };
+	il[0x54] = { "IGN", &Cpu6502::NOP, &Cpu6502::ZPX, 4 }; il[0x74] = { "IGN", &Cpu6502::NOP, &Cpu6502::ZPX, 4 }; il[0xD4] = { "IGN", &Cpu6502::NOP, &Cpu6502::ZPX, 4 };
+	il[0xF4] = { "IGN", &Cpu6502::NOP, &Cpu6502::ZPX, 4 }; il[0xD8] = { "CLD", &Cpu6502::CLD, &Cpu6502::IMP, 2 }; il[0xB8] = { "CLV", &Cpu6502::CLV, &Cpu6502::IMP, 2 };
+	il[0xF8] = { "SED", &Cpu6502::SED, &Cpu6502::IMP, 2 };
 }
 
 void Cpu6502::init() {
