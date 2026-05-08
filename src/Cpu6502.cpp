@@ -515,8 +515,7 @@ uint8_t Cpu6502::CPX() {
 
 	// NVIB DIZC
 	flags.c = x_ind >= M;
-	flags.z = x_ind == M;
-	flags.n = (result & 0x80); // 7th bit
+	set_nz(result);
 
 	return 0;
 }
@@ -526,8 +525,7 @@ uint8_t Cpu6502::CPY() {
 
 	// NVIB DIZC
 	flags.c = y_ind >= M;
-	flags.z = y_ind == M;
-	flags.n = (result & 0x80); // 7th bit
+	set_nz(result);
 
 	return 0;
 }
