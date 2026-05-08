@@ -40,7 +40,7 @@ uint8_t Bus::read(uint16_t addr) {
 		}
 
 		if (addr == 0x4016) {
-			return nes->controller.read(); // I/O (Controller)
+			return (nes->controller.read() & 0x1F) | (data & 0xE0); // I/O (Controller) with Open Bus behavior
 		}
 
 		return data;
