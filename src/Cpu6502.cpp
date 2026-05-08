@@ -125,6 +125,13 @@ Cpu6502::Cpu6502(Nes* nesPtr) {
 	il[0x47] = { "SRE", &Cpu6502::SRE, &Cpu6502::ZP0, 5 }; il[0x4F] = { "SRE", &Cpu6502::SRE, &Cpu6502::AB0, 6 }; il[0x53] = { "SRE", &Cpu6502::SRE, &Cpu6502::IZY, 8 };
 	il[0x57] = { "SRE", &Cpu6502::SRE, &Cpu6502::ZPX, 6 }; il[0x5B] = { "SRE", &Cpu6502::SRE, &Cpu6502::ABY, 7 }; il[0x5F] = { "SRE", &Cpu6502::SRE, &Cpu6502::ABX, 7 };
 
+	// Duplicated instructions
+	il[0xEB] = { "SBC", &Cpu6502::SBC, &Cpu6502::IMM, 2 };
+
+	// Unimplemented addressing modes
+	il[0x9E] = { "SHX", &Cpu6502::SHX, &Cpu6502::ABY, 5 };
+	il[0x9C] = { "SHY", &Cpu6502::SHY, &Cpu6502::ABX, 5 };
+
 	// NOPs
 	il[0x1A] = { "NOP", &Cpu6502::NOP, &Cpu6502::IMP, 2 }; il[0x3A] = { "NOP", &Cpu6502::NOP, &Cpu6502::IMP, 2 }; il[0x5A] = { "NOP", &Cpu6502::NOP, &Cpu6502::IMP, 2 };
 	il[0x7A] = { "NOP", &Cpu6502::NOP, &Cpu6502::IMP, 2 }; il[0xDA] = { "NOP", &Cpu6502::NOP, &Cpu6502::IMP, 2 }; il[0xEA] = { "NOP", &Cpu6502::NOP, &Cpu6502::IMP, 2 };
@@ -872,6 +879,19 @@ uint8_t Cpu6502::SRE() {
 }
 
 
+// Unimplemented addressing modes
+uint8_t Cpu6502::SHX() {
+	uint8_t hi = (target_addr - y_ind) >> 8;
+	uint8_t val = x_ind & (hi + 1);
+	nes->bus.write(target_addr, val);
+	return 0;
+}
+uint8_t Cpu6502::SHY() {
+	uint8_t hi = (target_addr - x_ind) >> 8;
+	uint8_t val = y_ind & (hi + 1);
+	nes->bus.write(target_addr, val);
+	return 0;
+}
 
 
 // ----- Addressing Modes -----

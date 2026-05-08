@@ -115,6 +115,9 @@ class Cpu6502 {
 		// Read-Modify-Write Instructions
 		uint8_t DCP(); uint8_t ISC(); uint8_t RLA(); uint8_t RRA(); uint8_t SLO(); uint8_t SRE();
 
+		// Unimplemented addressing modes
+		uint8_t SHX(); uint8_t SHY();
+
 		// ----- Addressing Modes -----
 		uint8_t IMP();	uint8_t ACC();	uint8_t IMM();
 		uint8_t ZP0();	uint8_t ZPX();	uint8_t ZPY();
