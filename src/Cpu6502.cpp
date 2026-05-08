@@ -878,10 +878,17 @@ uint8_t Cpu6502::ABX() {
 
 	target_addr = addr + x_ind;
 
+	bool is_rmw = (opcode == 0x1E || opcode == 0x3E || opcode == 0x5E ||
+		opcode == 0x7E || opcode == 0xDE || opcode == 0xFE);
+	bool page_crossed = (addr & 0xFF00) != (target_addr & 0xFF00);
+	bool is_write = (il[opcode].name == "STA");
+
 	// Check if a page boundary is crossed
-	if ((addr & 0xFF00) != (target_addr & 0xFF00)) {
+	if (page_crossed || is_write || is_rmw) {
 		uint16_t dummy_addr = (hi << 8) | (uint8_t)(lo + x_ind);
 		nes->bus.read(dummy_addr);
+
+		if (is_write || is_rmw) return 0;
 		return 1; // Oops cycle
 	}
 
@@ -900,6 +907,9 @@ uint8_t Cpu6502::ABY() {
 	if ((addr & 0xFF00) != (target_addr & 0xFF00)) {
 		uint16_t dummy_addr = (hi << 8) | (uint8_t)(lo + y_ind);
 		nes->bus.read(dummy_addr);
+
+		if (il[opcode].name == "STA") return 0;
+
 		return 1; // Oops cycle
 	}
 
@@ -964,17 +974,20 @@ uint8_t Cpu6502::IZX() {
 // Indirect Indexed (y)
 uint8_t Cpu6502::IZY() {
 	uint8_t ial = nes->bus.read(PC++);
-
 	uint8_t lo = nes->bus.read((uint16_t)ial);
-	uint8_t hi = nes->bus.read((uint16_t)(uint8_t)(ial + 1)); // Apply (uint8_t) for wrapping
+	uint8_t hi = nes->bus.read((uint16_t)(uint8_t)(ial + 1));
 
 	uint16_t base_addr = (hi << 8) | lo;
 	target_addr = base_addr + y_ind;
 
-	// Check if a page boundary is crossed
-	if ((base_addr & 0xFF00) != (target_addr & 0xFF00)) {
+	bool is_write = (il[opcode].name == "STA");
+	bool page_crossed = (base_addr & 0xFF00) != (target_addr & 0xFF00);
+
+	if (page_crossed || is_write) {
 		uint16_t dummy_addr = (hi << 8) | (uint8_t)(lo + y_ind);
 		nes->bus.read(dummy_addr);
+
+		if (is_write) return 0;
 		return 1; // Oops cycle
 	}
 
