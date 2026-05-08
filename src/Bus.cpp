@@ -30,34 +30,36 @@ uint8_t Bus::read(uint16_t addr) {
 
 	// APU, I/O Registers:		$4000 – $4017 (16384 - 16407)
 	if (addr >= 0x4000 && addr <= 0x4017) {
+		uint8_t data = (addr >> 8); // Open Bus behavior
+
 		// APU registers
-		if (addr >= 0x4000 && addr <= 0x4013 || addr == 0x4015 || addr == 0x4017) {
-			uint8_t data;
-			nes->apu.read(addr, data);
-			return data;
+		if ((addr >= 0x4000 && addr <= 0x4013) || addr == 0x4015 || addr == 0x4017) {
+			if (nes->apu.read(addr, data)) {
+				return data;
+			}
 		}
 
-		switch (addr) {
-			case 0x4016:	// I/O (Controller)
-				return nes->controller.read();
-			break;
+		if (addr == 0x4016) {
+			return nes->controller.read(); // I/O (Controller)
 		}
-		return 0;
+
+		return data;
 	}
 
 	// Disabled APU, I/O Reg:	$4018–$401F (16408 - 16415)
 	if (addr >= 0x4018 && addr <= 0x401F) {
 		// APU and I/O functionality that is normally disabled. See CPU Test Mode. 
-		return 0;
+		return (addr >> 8); // Open Bus behavior
 	}
 
 	// Disabled APU, I/O Reg:	$4020–$FFFF (16416 - 65535)
 	if (addr >= 0x4020 && addr <= 0xFFFF) {
 		// APU and I/O functionality that is normally disabled. See CPU Test Mode.
-		uint8_t data = 0;
+		uint8_t data = (addr >> 8); // Open Bus behavior
 		if (cartridge != nullptr && cartridge->read(addr, data)) {
 			return data;
 		}
+		return data;
 	}
 
 	return 0;

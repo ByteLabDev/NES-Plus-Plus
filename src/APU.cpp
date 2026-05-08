@@ -148,14 +148,14 @@ bool APU::read(uint16_t addr, uint8_t& data) {
 		if (pulse1.length_counter > 0)  data |= 0x01;
 		if (pulse2.length_counter > 0)  data |= 0x02;
 		if (triangle.length_counter > 0) data |= 0x04;
-		// if (noise.length_counter > 0) data |= 0x08;
+		 if (noise.length_counter > 0) data |= 0x08;
 		if (dmc.bytes_remaining > 0)    data |= 0x10; // Tell the game DMC is busy
 
 		// Note: Reading $4015 also clears the Frame Counter's interrupt flag
 		// (If you decide to implement Frame IRQs later)
 		return true;
 	}
-	return false;
+	return true;
 }
 
 void APU::step() {
