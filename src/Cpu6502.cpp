@@ -1,3 +1,5 @@
+// src/Cpu6502.cpp
+
 // The NES CPU core is based on the 6502 processor and runs at approximately 1.79 MHz (1.66 MHz in a PAL NES).
 // https://www.nesdev.org/wiki/CPU
 // https://www.masswerk.at/6502/6502_instruction_set.html
@@ -84,7 +86,7 @@ Cpu6502::Cpu6502(Nes* nesPtr) {
 
 	// Jump
 	il[0x4C] = { "JMP", &Cpu6502::JMP, &Cpu6502::AB0, 3 }; il[0x6C] = { "JMP", &Cpu6502::JMP, &Cpu6502::IND, 5 }; il[0x20] = { "JSR", &Cpu6502::JSR, &Cpu6502::AB0, 6 };
-	il[0x60] = { "RTS", &Cpu6502::RTS, &Cpu6502::IMP, 6 }; il[0x00] = { "BRK", &Cpu6502::BRK, &Cpu6502::IMM, 7 }; il[0x40] = { "RTI", &Cpu6502::RTI, &Cpu6502::IMP, 6 };
+	il[0x60] = { "RTS", &Cpu6502::RTS, &Cpu6502::IMP, 6 }; il[0x00] = { "BRK", &Cpu6502::BRK, &Cpu6502::IMP, 7 }; il[0x40] = { "RTI", &Cpu6502::RTI, &Cpu6502::IMP, 6 };
 
 	// Stack
 	il[0x48] = { "PHA", &Cpu6502::PHA, &Cpu6502::IMP, 3 }; il[0x08] = { "PHP", &Cpu6502::PHP, &Cpu6502::IMP, 3 }; il[0x68] = { "PLA", &Cpu6502::PLA, &Cpu6502::IMP, 4 };
@@ -540,6 +542,20 @@ uint8_t Cpu6502::RTS() {
 	return 0;
 }
 uint8_t Cpu6502::BRK() {
+	PC++;
+	stack_push((PC >> 8) & 0xFF);
+	stack_push(PC & 0xFF);
+
+	FLAGS status_to_push = flags;
+	status_to_push.b = 1;
+	status_to_push.u = 1;
+	stack_push(status_to_push.reg);
+
+	flags.i = 1;
+
+	uint8_t lo = nes->bus.read(0xFFFE);
+	uint8_t hi = nes->bus.read(0xFFFF);
+	PC = (hi << 8) | lo;
 	return 0;
 }
 uint8_t Cpu6502::RTI() {
@@ -749,11 +765,13 @@ uint8_t Cpu6502::SRE() {
 
 // Implicit
 uint8_t Cpu6502::IMP() {
+	nes->bus.read(PC);
 	return 0;
 }
 
 // Accumulator
 uint8_t Cpu6502::ACC() {
+	nes->bus.read(PC);
 	return 0;
 }
 
@@ -826,16 +844,17 @@ uint8_t Cpu6502::ABX() {
 // Absolute Indexed (y)
 uint8_t Cpu6502::ABY() {
 	// Fetches the value from a 16-bit address anywhere in memory.
-	uint8_t lo = nes->bus.read(PC);
-	PC++;
-	uint8_t hi = nes->bus.read(PC);
-	PC++;
+	uint8_t lo = nes->bus.read(PC++);
+	uint8_t hi = nes->bus.read(PC++);
 
 	uint16_t addr = (hi << 8) | lo;
-
 	target_addr = addr + y_ind;
 
-	if ((addr & 0xFF00) != (target_addr & 0xFF00)) return 1; // Oops cycle
+	if ((addr & 0xFF00) != (target_addr & 0xFF00)) {
+		uint16_t dummy_addr = (hi << 8) | (uint8_t)(lo + y_ind);
+		nes->bus.read(dummy_addr);
+		return 1; // Oops cycle
+	}
 
 	return 0;
 }
@@ -907,7 +926,7 @@ uint8_t Cpu6502::IZY() {
 
 	// Check if a page boundary is crossed
 	if ((base_addr & 0xFF00) != (target_addr & 0xFF00)) {
-		uint16_t dummy_addr = (hi << 8) | (uint8_t)(lo + x_ind);
+		uint16_t dummy_addr = (hi << 8) | (uint8_t)(lo + y_ind);
 		nes->bus.read(dummy_addr);
 		return 1; // Oops cycle
 	}
