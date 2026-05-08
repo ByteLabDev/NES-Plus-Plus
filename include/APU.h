@@ -325,6 +325,11 @@ class APU {
 		float high_pass_prev_sample = 0.0f;
 		float high_pass_prev_out = 0.0f;
 
+		// Interrupt control
+		bool is_5_step_mode = false;
+		bool frame_irq_disable = true;
+		bool frame_irq_pending = false;
+
 		void clock_frame_counter();
 		void dmc_fetch_sample();
 		void update_debug_history();

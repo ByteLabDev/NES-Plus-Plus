@@ -4,6 +4,7 @@
 #include "APU.h"
 #include "Nes.h"
 #include "Common.h"
+#include "Cpu6502.h"
 
 APU::APU(Nes* nesPtr) {
 	nes = nesPtr;
@@ -128,7 +129,14 @@ bool APU::write(uint16_t addr, uint8_t data) {
 			break;
 		case 0x4017:	// Frame Counter
 			frame_value = 0;
-			if (data & 0x80) {
+			frame_irq_disable = (data & 0x40);
+			is_5_step_mode = (data & 0x80);
+
+			if (frame_irq_disable) {
+				frame_irq_pending = false;
+			}
+
+			if (is_5_step_mode) {
 				// In 5-step mode, clock everything immediately
 				triangle.clock_linear_counter();
 				pulse1.clock_length_counter();
@@ -137,6 +145,7 @@ bool APU::write(uint16_t addr, uint8_t data) {
 				pulse1.clock_sweep(1);
 				pulse2.clock_sweep(2);
 			}
+			
 			break;
 	}
 	return true;
@@ -148,14 +157,17 @@ bool APU::read(uint16_t addr, uint8_t& data) {
 		if (pulse1.length_counter > 0)  data |= 0x01;
 		if (pulse2.length_counter > 0)  data |= 0x02;
 		if (triangle.length_counter > 0) data |= 0x04;
-		 if (noise.length_counter > 0) data |= 0x08;
+		if (noise.length_counter > 0) data |= 0x08;
 		if (dmc.bytes_remaining > 0)    data |= 0x10; // Tell the game DMC is busy
 
-		// Note: Reading $4015 also clears the Frame Counter's interrupt flag
-		// (If you decide to implement Frame IRQs later)
+		if (frame_irq_pending) {
+			data |= 0x40;
+		}
+
+		frame_irq_pending = false;
 		return true;
 	}
-	return true;
+	return false;
 }
 
 void APU::step() {
@@ -177,6 +189,11 @@ void APU::step() {
 
 	if (total_cycles % 400 == 0) {
 		update_debug_history();
+	}
+
+	// Always signal the CPU if the flag is up
+	if (frame_irq_pending) {
+		nes->cpu6502.IRQ();
 	}
 }
 
@@ -202,6 +219,16 @@ void APU::clock_frame_counter() {
 
 			triangle.clock_length_counter();
 			noise.clock_length_counter();
+		}
+	}
+
+	if (!is_5_step_mode) {
+		// In 4-step mode, the Frame IRQ flag is set during these cycles
+		// $4017 bit 6 (frame_irq_disable) must be 0 for this to happen
+		if (frame_value >= 29828) {
+			if (!frame_irq_disable) {
+				frame_irq_pending = true;
+			}
 		}
 	}
 

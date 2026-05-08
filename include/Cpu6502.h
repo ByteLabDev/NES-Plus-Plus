@@ -24,6 +24,7 @@ class Cpu6502 {
 		void reset();
 		void IRQ();
 		void NMI();
+		void handle_irq();
 		void handle_nmi();
 	private:
 		Nes* nes;
@@ -58,6 +59,7 @@ class Cpu6502 {
 		};
 
 		FLAGS flags{ 0b00100000 };
+		bool irq_pending = false;
 		bool nmi_pending = false;
 
 		std::array<Instruction, 256> il; // Instruction lookup

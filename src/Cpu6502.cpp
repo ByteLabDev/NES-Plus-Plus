@@ -141,6 +141,11 @@ uint8_t Cpu6502::step() {
 		return 7;
 	}
 
+	if (irq_pending) {
+		handle_irq();
+		return 7;
+	}
+
 	opcode = nes->bus.read(PC++);
 
 	Instruction& inst = il[opcode];
@@ -173,8 +178,37 @@ void Cpu6502::reset() {
 	flags = { 0b00100000 };
 }
 
+void Cpu6502::IRQ() {
+	if (flags.i == 0) {
+		irq_pending = true;
+	}
+}
+
 void Cpu6502::NMI() {
 	nmi_pending = true;
+}
+
+void Cpu6502::handle_irq() {
+	// 1. Push Program Counter to stack
+	stack_push((PC >> 8) & 0xFF);
+	stack_push(PC & 0xFF);
+
+	// 2. Push Status Register
+	// Note: B flag is 0, U flag is 1 for hardware interrupts
+	FLAGS status_to_push = flags;
+	status_to_push.b = 0;
+	status_to_push.u = 1;
+	stack_push(status_to_push.reg);
+
+	// 3. Set Interrupt Disable flag to prevent nested IRQs
+	flags.i = 1;
+
+	// 4. Load PC from IRQ/BRK vector ($FFFE-$FFFF)
+	uint8_t lo = nes->bus.read(0xFFFE);
+	uint8_t hi = nes->bus.read(0xFFFF);
+	PC = (hi << 8) | lo;
+
+	irq_pending = false;
 }
 
 void Cpu6502::handle_nmi() {
