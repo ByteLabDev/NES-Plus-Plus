@@ -35,6 +35,15 @@ void Display::update() {
         ImGui_ImplSDL3_ProcessEvent(&event);
         if (event.type == SDL_EVENT_QUIT) m_running = false;
 
+        // Menu shortcuts
+        if (event.type == SDL_EVENT_KEY_DOWN) {
+            bool ctrl_held = (event.key.mod & SDL_KMOD_CTRL);
+
+            if (ctrl_held && event.key.key == SDLK_O) {
+                open_file_dialog();
+            }
+        }
+
         // Load file dropped into window
         if (event.type == SDL_EVENT_DROP_FILE) {
             const char* file_path = event.drop.data;
