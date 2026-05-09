@@ -34,6 +34,15 @@ void Display::update() {
     while (SDL_PollEvent(&event)) {
         ImGui_ImplSDL3_ProcessEvent(&event);
         if (event.type == SDL_EVENT_QUIT) m_running = false;
+
+        // Load file dropped into window
+        if (event.type == SDL_EVENT_DROP_FILE) {
+            const char* file_path = event.drop.data;
+            
+            if (file_path) {
+                nes->cartridge->load_rom(file_path);
+            }
+        }
     }
 
     // Start ImGui frame
