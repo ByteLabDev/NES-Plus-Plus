@@ -11,7 +11,6 @@ Nes::Nes() : ppu(this), cpu6502(this), bus(this), display(this), controller(this
 }
 
 void Nes::set_region(Region region) {
-	ppu_ratio = (region == PAL) ? 3.2f : 3.0f;
     target_frame_rate = (region == Region::PAL) ? 50 : 60;
     cpu_clock_speed = region == PAL ? 1662607.0 : 1789773.0;
     samples_per_nes_clock = (double)sample_rate / (double)cpu_clock_speed;
@@ -37,11 +36,16 @@ void Nes::tick() {
         }
     }
 
+    // PAL ratio is 3.2 (16:5), NTSC is 3:1 (15:5)
+    // This is more accurate than checking every 3.2 cycles because of floating point errors
+    uint8_t multiplier = (region == PAL) ? 16 : 15;
+    uint8_t divisor = 5;
+
     // PPU still scales based on the total instruction cycles
-    ppu_accumulator += cycles * ppu_ratio;
-    while (ppu_accumulator >= 1.0f) {
+    ppu_accumulator += cycles * multiplier;
+    while (ppu_accumulator >= divisor) {
         ppu.step();
-        ppu_accumulator -= 1.0f;
+        ppu_accumulator -= divisor;
     }
 
     // Push to SDL once we have enough for a frame
