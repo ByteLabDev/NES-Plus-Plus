@@ -97,13 +97,14 @@ void PPU::vram_write(uint16_t addr, uint8_t data) {
 }
 
 void PPU::step() {
-	c_count_temp++;
-	cycles++;
-
 	handle_counters();
 
 	if (scanline < 240 && cycles >= 1 && cycles <= 256) {
 		render_pixel();
+	}
+
+	if (cycles == 257 && (scanline < 240 || scanline == 261)) {
+		evaluate_sprites();
 	}
 
 	bool rendering_enabled = mask.render_bg || mask.render_sp;
@@ -113,18 +114,14 @@ void PPU::step() {
 		process_visible_scanline();
 	}
 
-	// Scanlines 241-260 | Vertical blanking lines
-	if (scanline >= 241 && scanline <= 260) {
-
-	}
+	c_count_temp++;
+	cycles++;
 }
 
 void PPU::handle_counters() {
 	if (cycles >= 341) {
 		cycles = 0;
 		scanline++;
-
-		evaluate_sprites();
 
 		int max_scanlines = (nes->region == Region::PAL) ? 312 : 262;
 
@@ -253,20 +250,30 @@ void PPU::process_visible_scanline() {
 }
 
 void PPU::evaluate_sprites() {
+	bool rendering_enabled = mask.render_bg || mask.render_sp;
+	if (!rendering_enabled) return;
+
 	sprite_count = 0;
+	int sprite_height = ctrl.sprite_size ? 16 : 8;
+
 	for (int i = 0; i < 8; i++) {
 		sprite_buffer[i] = default_sp;
 		sprite_buffer[i].shifter_lo = 0; // Ensure shifters are reset
 		sprite_buffer[i].shifter_hi = 0;
 	}
 
-	int sprite_height = ctrl.sprite_size ? 16 : 8;
-
-	for (int i = 0; i < 64 && sprite_count < 8; i++) {
+	for (int i = 0; i < 64; i++) {
 		uint8_t sprite_y = oam_data[i * 4];
 		int diff = scanline - (int)sprite_y;
 
+		if (sprite_y >= 240) continue;
+
 		if (diff >= 0 && diff < sprite_height) {
+			if (sprite_count >= 8) {
+				// Set overflow if sprite_count == 9
+				status.flag_sp_overflow = 1;
+				return;
+			}
 			Sprite& s = sprite_buffer[sprite_count];
 			s.id = oam_data[i * 4 + 1];
 			s.attr = oam_data[i * 4 + 2];
