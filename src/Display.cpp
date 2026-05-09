@@ -44,18 +44,24 @@ void Display::update() {
     // Menu bar functions
     if (ImGui::BeginMainMenuBar()) {
         if (ImGui::BeginMenu("File")) {
-            if (ImGui::MenuItem("Exit")) m_running = false;
             if (ImGui::MenuItem("Load ROM", "Ctrl+O")) {
                 open_file_dialog();
             }
+            ImGui::Separator();
+            if (ImGui::MenuItem("Exit")) m_running = false;
             ImGui::EndMenu();
         }
         if (ImGui::BeginMenu("Edit")) {
             if (ImGui::MenuItem("Options", NULL, &show_options_menu));
-            if (ImGui::MenuItem("Reset")) {
-                nes->cpu6502.reset();
-                nes->ppu.reset();
-                //nes->apu.reset();
+            if (ImGui::MenuItem("Hard Reset")) {
+                nes->cpu6502.hard_reset();
+                nes->ppu.hard_reset();
+                nes->apu.hard_reset();
+            }
+            if (ImGui::MenuItem("Soft Reset")) {
+                nes->cpu6502.soft_reset();
+                nes->ppu.soft_reset();
+                nes->apu.soft_reset();
             }
             ImGui::EndMenu();
         }

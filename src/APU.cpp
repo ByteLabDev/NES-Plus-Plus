@@ -11,6 +11,87 @@ APU::APU(Nes* nesPtr) {
 	current_seq = nes->region == Common::Region::PAL ? PAL_Seq : NTSC_Seq;
 }
 
+void APU::soft_reset() {
+	pulse1.enabled = false;
+	pulse1.length_counter = 0;
+
+	pulse2.enabled = false;
+	pulse2.length_counter = 0;
+
+	triangle.enabled = false;
+	triangle.length_counter = 0;
+
+	noise.enabled = false;
+	noise.length_counter = 0;
+
+	dmc.enabled = false;
+	dmc.bytes_remaining = 0;
+	dmc.output_level &= 0x01;
+
+	triangle.step_index = 0;
+
+	frame_value = 0;
+}
+void APU::hard_reset() {
+	soft_reset();
+
+	total_cycles = 0;
+	frame_irq_pending = false;
+	frame_irq_disable = false;
+	is_5_step_mode = false;
+
+	high_pass_prev_sample = 0.0f;
+	high_pass_prev_out = 0.0f;
+
+	// Pulse 1
+	pulse1.ctrl.reg = 0;
+	pulse1.timer_reload = 0;
+	pulse1.timer_value = 0;
+	pulse1.duty_phase = 0;
+	pulse1.sweep = PulseChannel::Sweep{};
+	pulse1.envelope = Envelope{};
+
+	// Pulse 2
+	pulse2.ctrl.reg = 0;
+	pulse2.timer_reload = 0;
+	pulse2.timer_value = 0;
+	pulse2.duty_phase = 0;
+	pulse2.sweep = PulseChannel::Sweep{};
+	pulse2.envelope = Envelope{};
+
+	// Triangle
+	triangle.linear_counter = 0;
+	triangle.linear_reload_value = 0;
+	triangle.linear_reload_flag = false;
+	triangle.halt_flag = false;
+	triangle.timer_reload = 0;
+	triangle.timer_value = 0;
+
+	// Noise
+	noise.ctrl.reg = 0;
+	noise.envelope = Envelope{};
+	noise.timer_reload = 0;
+	noise.timer_value = 0;
+	noise.mode = false;
+	noise.shift_register = 1;
+
+	// DMC
+	dmc_sample_buffer = 0;
+	dmc_sample_buffer_full = false;
+
+	dmc.timer_reload = 0;
+	dmc.output_level = 0;
+	dmc.sample_start_addr = 0;
+	dmc.sample_length = 0;
+	dmc.irq_enabled = false;
+	dmc.loop = false;
+	dmc.timer_value = 0;
+	dmc.current_addr = 0;
+	dmc.shift_register = 0;
+	dmc.bits_remaining = 8;
+	dmc.silent = true;
+}
+
 bool APU::write(uint16_t addr, uint8_t data) {
 	switch (addr) {
 		case 0x4000:	// Pulse1 - Duty (D), envelope loop / length counter halt (L), constant volume (C), volume/envelope (V)

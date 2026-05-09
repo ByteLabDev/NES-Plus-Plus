@@ -146,9 +146,6 @@ Cpu6502::Cpu6502(Nes* nesPtr) {
 	il[0xF8] = { "SED", &Cpu6502::SED, &Cpu6502::IMP, 2 };
 }
 
-void Cpu6502::init() {
-}
-
 uint8_t Cpu6502::step() {
 	if (nmi_pending) {
 		handle_nmi();
@@ -186,17 +183,37 @@ uint8_t Cpu6502::step() {
 	return total_cycles;
 }
 
-void Cpu6502::reset() {
+void Cpu6502::soft_reset() {
 	uint8_t lo = nes->bus.read(0xFFFC);
 	uint8_t hi = nes->bus.read(0xFFFD);
+
+	PC = (hi << 8) | lo;
+	SP -= 3;
+
+	flags.i = 1;
+}
+
+void Cpu6502::hard_reset() {
+	uint8_t lo = nes->bus.read(0xFFFC);
+	uint8_t hi = nes->bus.read(0xFFFD);
+
+	PC = (hi << 8) | lo;
+	SP = 0xFD;
 
 	acc = 0;
 	x_ind = 0;
 	y_ind = 0;
-	PC = (hi << 8) | lo;
-	SP = 0xFD;
-	flags = { 0b00100000 };
+
+	flags.reg = 0x34;
+
+	opcode = 0;
+	target_addr = 0;
+
+	irq_pending = false;
+	nmi_pending = false;
 	trigger_irq_next = false;
+
+	nes->bus.clear();
 }
 
 void Cpu6502::set_irq_line(bool state) {

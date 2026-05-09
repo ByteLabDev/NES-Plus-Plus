@@ -19,11 +19,11 @@ class Cpu6502 {
 			uint8_t cycles;
 		};
 
-		void init();
 		uint8_t step();
 		
 		// ----- Interrupts -----
-		void reset();
+		void soft_reset();
+		void hard_reset();
 		void set_irq_line(bool state);
 		void NMI();
 		void handle_irq();
@@ -31,17 +31,17 @@ class Cpu6502 {
 	private:
 		Nes* nes;
 
-		uint8_t opcode; // Current opcode
+		uint8_t opcode = 0; // Current opcode
 
-		uint16_t PC;    // Program Counter | Shows up to 64 kb (2^16 bytes) memory
-		uint8_t SP;     // Stack Pointer
+		uint16_t PC = 0;    // Program Counter | Shows up to 64 kb (2^16 bytes) memory
+		uint8_t SP = 0;     // Stack Pointer
 
 		// ----- Registers -----
-		uint8_t acc;    // Accumulator
-		uint8_t x_ind;  // X Index
-		uint8_t y_ind;  // Y Index
+		uint8_t acc = 0;    // Accumulator
+		uint8_t x_ind = 0;  // X Index
+		uint8_t y_ind = 0;  // Y Index
 
-		uint16_t target_addr;
+		uint16_t target_addr = 0;
 
 		// ----- Flags -----
 		union FLAGS {

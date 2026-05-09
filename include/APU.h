@@ -13,6 +13,8 @@ class APU {
 		bool write(uint16_t addr, uint8_t data);
 		void step();
 		float get_output();
+		void soft_reset();
+		void hard_reset();
 		void set_region(Common::Region region) {
 			current_seq = (region == Common::Region::PAL) ? PAL_Seq : NTSC_Seq;
 		}

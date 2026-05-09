@@ -14,7 +14,7 @@ class Bus {
 		Nes* nes;
 	public:
 		Bus(Nes* nesPtr);
-		void init();
+		void clear();
 		uint8_t read(uint16_t address);
 		void write(uint16_t address, uint8_t data);
 		void insertCartridge(Cartridge* cartridgePtr);

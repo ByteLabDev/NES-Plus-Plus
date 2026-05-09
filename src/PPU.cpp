@@ -408,18 +408,47 @@ bool PPU::write(uint16_t addr, uint8_t data) {
 	return true;
 }
 
-void PPU::reset() {
+void PPU::soft_reset() {
 	ctrl.reg = 0x0;
 	mask.reg = 0x0;
-	status.reg = status.reg & 0b10000000; // U??x xxxx
-	fine_x = 0x0;
-	addr_latch = false;
-	vram_read_buffer = 0x0;
+	status.reg = status.reg & 0b10000000;
+
 	vram_addr = 0x0;
 	tmp_vram_addr = 0x0;
+	fine_x = 0x0;
+	addr_latch = false;
+
+	vram_read_buffer = 0x0;
+
 	cycles = 0;
 	scanline = 0;
 	frame_ready = false;
+}
+
+void PPU::hard_reset() {
+	soft_reset();
+	
+	oam_addr = 0;
+	memset(oam_data, 0, sizeof(oam_data));
+	memset(secondary_oam_data, 0, sizeof(secondary_oam_data));
+
+	memset(vram, 0, sizeof(vram));
+	memset(palette_ram, 0, sizeof(palette_ram));
+
+	bg_next_tile_id = 0;		
+	bg_next_attrib = 0;			
+	bg_next_lo = 0;				
+	bg_next_hi = 0;				
+
+	bg_shifter_pattern_lo = 0;	
+	bg_shifter_pattern_hi = 0;	
+	bg_shifter_attrib_lo = 0;	
+	bg_shifter_attrib_hi = 0;	
+
+	memset(sprite_buffer, 0, sizeof(sprite_buffer));
+	sprite_count = 0;			
+
+	open_bus = 0x00;
 }
 
 void PPU::coarse_x_increment() {

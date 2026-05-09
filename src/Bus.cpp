@@ -10,6 +10,10 @@ Bus::Bus(Nes* nesPtr) {
 	nes = nesPtr;
 }
 
+void Bus::clear() {
+	std::fill(wram.begin(), wram.end(), 0x00);
+}
+
 uint8_t Bus::read(uint16_t addr) {
 	// Working RAM:				$0000 - $1FFF (0-8191)
 	// Non-mirror range:		$0000–$07FF (0-2047)

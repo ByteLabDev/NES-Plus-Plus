@@ -85,8 +85,9 @@ bool Cartridge::load_rom(const std::string& filename) {
 	romPath = filename;
 	is_loaded = true;
 
-	nes->cpu6502.reset();
-	nes->ppu.reset();
+	nes->cpu6502.hard_reset();
+	nes->ppu.hard_reset();
+	nes->apu.hard_reset();
 
 	return true;
 }

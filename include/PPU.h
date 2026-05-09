@@ -10,7 +10,8 @@ class PPU {
 		PPU(Nes* nesPtr);
 		uint16_t cycles;
 		uint16_t scanline;
-		void reset();
+		void soft_reset();
+		void hard_reset();
 		void step();
 		bool read(uint16_t addr, uint8_t& data);
 		bool write(uint16_t addr, uint8_t data);
@@ -45,7 +46,7 @@ class PPU {
 			bool	is_sprite_zero;		// 
 		};
 
-		Sprite default_sp = { 0xFF, 0xFF, 0x00, 0xFF, 0x00, 0x00, 0x00 };
+		const Sprite default_sp = { 0xFF, 0xFF, 0x00, 0xFF, 0x00, 0x00, 0x00 };
 
 		// ------------------------------------
 		// ---------- MMIO Registers ----------
