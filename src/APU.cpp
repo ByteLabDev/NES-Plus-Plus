@@ -132,9 +132,7 @@ bool APU::write(uint16_t addr, uint8_t data) {
 			frame_irq_disable = (data & 0x40);
 			is_5_step_mode = (data & 0x80);
 
-			if (frame_irq_disable) {
-				frame_irq_pending = false;
-			}
+			frame_irq_pending = false;
 
 			if (is_5_step_mode) {
 				// In 5-step mode, clock everything immediately
@@ -192,9 +190,7 @@ void APU::step() {
 	}
 
 	// Always signal the CPU if the flag is up
-	if (frame_irq_pending) {
-		nes->cpu6502.IRQ();
-	}
+	nes->cpu6502.set_irq_line(frame_irq_pending);
 }
 
 void APU::clock_frame_counter() {
@@ -225,7 +221,7 @@ void APU::clock_frame_counter() {
 	if (!is_5_step_mode) {
 		// In 4-step mode, the Frame IRQ flag is set during these cycles
 		// $4017 bit 6 (frame_irq_disable) must be 0 for this to happen
-		if (frame_value >= 29828) {
+		if (frame_value == 14914 || frame_value == 14915 || frame_value == 0) {
 			if (!frame_irq_disable) {
 				frame_irq_pending = true;
 			}

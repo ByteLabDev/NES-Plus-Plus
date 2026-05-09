@@ -24,7 +24,7 @@ class Cpu6502 {
 		
 		// ----- Interrupts -----
 		void reset();
-		void IRQ();
+		void set_irq_line(bool state);
 		void NMI();
 		void handle_irq();
 		void handle_nmi();
@@ -40,7 +40,6 @@ class Cpu6502 {
 		uint8_t acc;    // Accumulator
 		uint8_t x_ind;  // X Index
 		uint8_t y_ind;  // Y Index
-		uint8_t stat;   // Status
 
 		uint16_t target_addr;
 
@@ -63,6 +62,7 @@ class Cpu6502 {
 		FLAGS flags{ 0b00100000 };
 		bool irq_pending = false;
 		bool nmi_pending = false;
+		bool trigger_irq_next = false;
 
 		std::array<Instruction, 256> il; // Instruction lookup
 

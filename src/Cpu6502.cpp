@@ -155,18 +155,16 @@ uint8_t Cpu6502::step() {
 		return 7;
 	}
 
-	if (irq_pending) {
+	if (trigger_irq_next) {
+		trigger_irq_next = false;
 		handle_irq();
 		return 7;
 	}
 
+	uint8_t old_i_flag = flags.i;
+
 	opcode = nes->bus.read(PC++);
-
 	Instruction& inst = il[opcode];
-
-	//if (opcode != 0x10 && opcode != 0xAD && inst.name != "STA" && inst.name != "DEX" && inst.name != "BNE" && inst.name != "INX" && inst.name != "INY" && inst.name != "LDA") {
-	//	std::cout << "PC: 0x" << std::hex << (int)PC << " | Opcode: 0x" << std::hex << (int)opcode << " = " << inst.name << std::endl;
-	//}
 
 	if (inst.name == "UNK" || inst.addrmode == nullptr || inst.operate == nullptr) {
 		std::cout << "Unimplemented Opcode: 0x" << std::hex << (int)opcode << std::endl;
@@ -176,8 +174,16 @@ uint8_t Cpu6502::step() {
 
 	uint8_t addr_cycles = (this->*inst.addrmode)();
 	uint8_t op_cycles = (this->*inst.operate)();
+	uint8_t total_cycles = inst.cycles + addr_cycles + op_cycles;
 
-	return inst.cycles + addr_cycles + op_cycles;
+	uint8_t polled_i_flag = flags.i;
+	if (inst.name == "CLI" || inst.name == "SEI" || inst.name == "PLP") {
+		polled_i_flag = old_i_flag;
+	}
+
+	trigger_irq_next = (irq_pending && polled_i_flag == 0);
+
+	return total_cycles;
 }
 
 void Cpu6502::reset() {
@@ -190,9 +196,10 @@ void Cpu6502::reset() {
 	PC = (hi << 8) | lo;
 	SP = 0xFD;
 	flags = { 0b00100000 };
+	trigger_irq_next = false;
 }
 
-void Cpu6502::IRQ() {
+void Cpu6502::set_irq_line(bool state) {
 	if (flags.i == 0) {
 		irq_pending = true;
 	}
@@ -208,7 +215,6 @@ void Cpu6502::handle_irq() {
 	stack_push(PC & 0xFF);
 
 	// 2. Push Status Register
-	// Note: B flag is 0, U flag is 1 for hardware interrupts
 	FLAGS status_to_push = flags;
 	status_to_push.b = 0;
 	status_to_push.u = 1;
@@ -216,13 +222,14 @@ void Cpu6502::handle_irq() {
 
 	// 3. Set Interrupt Disable flag to prevent nested IRQs
 	flags.i = 1;
+	trigger_irq_next = false;
 
 	// 4. Load PC from IRQ/BRK vector ($FFFE-$FFFF)
 	uint8_t lo = nes->bus.read(0xFFFE);
 	uint8_t hi = nes->bus.read(0xFFFF);
 	PC = (hi << 8) | lo;
 
-	irq_pending = false;
+	// DO NOT set irq_pending = false here. 
 }
 
 void Cpu6502::handle_nmi() {
@@ -239,6 +246,7 @@ void Cpu6502::handle_nmi() {
 	nes->bus.write(0x100 + SP--, new_status.reg);
 
 	flags.i = 1;
+	trigger_irq_next = false;
 
 	// Jump to NMI
 	uint8_t vector_lo = nes->bus.read(0xFFFA);
@@ -611,6 +619,7 @@ uint8_t Cpu6502::BRK() {
 	stack_push(status_to_push.reg);
 
 	flags.i = 1;
+	trigger_irq_next = false;
 
 	uint8_t lo = nes->bus.read(0xFFFE);
 	uint8_t hi = nes->bus.read(0xFFFF);
