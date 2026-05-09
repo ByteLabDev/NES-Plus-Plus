@@ -200,9 +200,7 @@ void Cpu6502::reset() {
 }
 
 void Cpu6502::set_irq_line(bool state) {
-	if (flags.i == 0) {
-		irq_pending = true;
-	}
+	irq_pending = state;
 }
 
 void Cpu6502::NMI() {
