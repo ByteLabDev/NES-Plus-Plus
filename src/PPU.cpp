@@ -340,11 +340,13 @@ bool PPU::read(uint16_t addr, uint8_t& data) {
 		open_bus = data;
 		break;
 	case 0x7:	// PPUDATA
-		data = vram_read_buffer;
-		vram_read_buffer = vram_read(vram_addr);
-
 		if (vram_addr >= 0x3F00 && vram_addr <= 0x3FFF) { // https://www.nesdev.org/wiki/PPU_registers#Reading_palette_RAM
+			data = vram_read(vram_addr);
+			vram_read_buffer = vram_read(vram_addr & 0x2FFF);
+		}
+		else {
 			data = vram_read_buffer;
+			vram_read_buffer = vram_read(vram_addr);
 		}
 
 		open_bus = data;
