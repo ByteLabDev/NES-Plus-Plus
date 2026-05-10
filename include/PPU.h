@@ -127,6 +127,7 @@ class PPU {
 		uint8_t		sprite_count;				// Number of sprites rendered on a single scanline
 
 		uint8_t		open_bus = 0x00;			// Tracks the last value on the PPU data bus
+		uint64_t	last_bus_update_cycle;		// Tracks capacitor decay for open bus
 
 		// ----- Helper Methods -----
 		uint16_t get_mirror_index(uint16_t addr);
@@ -139,6 +140,8 @@ class PPU {
 		void process_visible_scanline();
 		void transfer_x_address();
 		void transfer_y_address();
+		uint8_t get_open_bus();
+		void set_open_bus(uint8_t value);
 
 		// ----- Scrolling -----
 		void coarse_x_increment();

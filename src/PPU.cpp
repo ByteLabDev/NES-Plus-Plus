@@ -118,6 +118,19 @@ void PPU::step() {
 	cycles++;
 }
 
+uint8_t PPU::get_open_bus() {
+	uint64_t clocks_per_second = (nes->region == Region::NTSC ? 1789773 : 1662607);
+	if (nes->total_cycles - last_bus_update_cycle > clocks_per_second) {
+		open_bus = 0x00;
+	}
+	return open_bus;
+}
+
+void PPU::set_open_bus(uint8_t value) {
+	open_bus = value;
+	last_bus_update_cycle = nes->total_cycles;
+}
+
 void PPU::handle_counters() {
 	if (cycles >= 341) {
 		cycles = 0;
@@ -329,19 +342,27 @@ void PPU::transfer_y_address() {
 
 bool PPU::read(uint16_t addr, uint8_t& data) {
 	uint16_t reg = addr % 8; // Mirrors every 8 bytes from $2008 to $3FFF
+	uint8_t current_bus = get_open_bus();
+
 	switch (reg) {
 	case 0x2:	// PPUSTATUS
-		data = status.reg;
+		data = (status.reg & 0xE0) | (current_bus & 0x1F);
 		status.flag_vblank = 0;
 		addr_latch = false;
+
+		open_bus = data;
 		break;
 	case 0x4:	// OAMDATA
 		data = oam_data[oam_addr];
-		open_bus = data;
+		// Mask bits 2-4 if reading an attribute byte
+		if ((oam_addr & 0x03) == 0x02) {
+			data &= 0xE3;
+		}
+		set_open_bus(data);
 		break;
 	case 0x7:	// PPUDATA
 		if (vram_addr >= 0x3F00 && vram_addr <= 0x3FFF) { // https://www.nesdev.org/wiki/PPU_registers#Reading_palette_RAM
-			data = vram_read(vram_addr);
+			data = (vram_read(vram_addr) & 0x3F) | (current_bus & 0xC0);
 			vram_read_buffer = vram_read(vram_addr & 0x2FFF);
 		}
 		else {
@@ -349,22 +370,20 @@ bool PPU::read(uint16_t addr, uint8_t& data) {
 			vram_read_buffer = vram_read(vram_addr);
 		}
 
-		open_bus = data;
+		set_open_bus(data);
 		vram_addr += (ctrl.increment_mode ? 32 : 1); // Increment by bit 2 of $2000 (0: add 1, going across; 1: add 32, going down)
 		vram_addr &= 0x3FFF; // The PPU address space is 14-bit, spanning $0000–$3FFF.
 		break;
 	default:
-		data = open_bus;
+		data = current_bus;
 		break;
 	}
-
-	open_bus = data;
 
 	return true;
 }
 
 bool PPU::write(uint16_t addr, uint8_t data) {
-	open_bus = data;
+	set_open_bus(data);
 
 	uint16_t reg = addr % 8; // Mirrors every 8 bytes from $2008 to $3FFF
 	switch (reg) {
@@ -458,6 +477,7 @@ void PPU::hard_reset() {
 	sprite_count = 0;			
 
 	open_bus = 0x00;
+	last_bus_update_cycle = 0;
 }
 
 void PPU::coarse_x_increment() {

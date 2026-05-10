@@ -19,6 +19,8 @@ class Nes {
 		int cpu_clock_speed;
 		const int sample_rate = 44100;
 
+		uint64_t total_cycles = 0;
+
 		void set_region(Common::Region region);
 		void insert_cartridge(Cartridge* cartridgePtr);
 

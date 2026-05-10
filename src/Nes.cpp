@@ -23,6 +23,7 @@ void Nes::insert_cartridge(Cartridge* cartridgePtr) {
 
 void Nes::tick() {
     uint8_t cycles = cpu6502.step();
+    total_cycles += cycles;
 
     // The APU must stay in sync with the CPU cycles
     for (uint8_t i = 0; i < cycles; i++) {
