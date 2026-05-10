@@ -948,17 +948,19 @@ uint8_t Cpu6502::ZP0() {
 
 // Zero Page Indexed (x)
 uint8_t Cpu6502::ZPX() {
-	uint8_t addr = nes->bus.read(PC);
+	uint8_t base_addr = nes->bus.read(PC);
 	PC++;
-	target_addr = (uint16_t)(uint8_t)(addr + x_ind);
+	nes->bus.read(base_addr);
+	target_addr = (uint16_t)(uint8_t)(base_addr + x_ind);
 	return 0;
 }
 
 // Zero Page Indexed (y)
 uint8_t Cpu6502::ZPY() {
-	uint8_t addr = nes->bus.read(PC);
+	uint8_t base_addr = nes->bus.read(PC);
+	nes->bus.read(base_addr);
 	PC++;
-	target_addr = (uint16_t)(uint8_t)(addr + y_ind);
+	target_addr = (uint16_t)(uint8_t)(base_addr + y_ind);
 	return 0;
 }
 
@@ -1012,11 +1014,13 @@ uint8_t Cpu6502::ABY() {
 	uint16_t addr = (hi << 8) | lo;
 	target_addr = addr + y_ind;
 
-	if ((addr & 0xFF00) != (target_addr & 0xFF00)) {
+	bool is_write = (il[opcode].name == "STA");
+
+	if ((addr & 0xFF00) != (target_addr & 0xFF00) || is_write) {
 		uint16_t dummy_addr = (hi << 8) | (uint8_t)(lo + y_ind);
 		nes->bus.read(dummy_addr);
 
-		if (il[opcode].name == "STA") return 0;
+		if (is_write) return 0;
 
 		return 1; // Oops cycle
 	}
@@ -1068,6 +1072,7 @@ uint8_t Cpu6502::IND() {
 // Indirect Indexed (x)
 uint8_t Cpu6502::IZX() {
 	uint8_t base = nes->bus.read(PC++);
+	nes->bus.read(base);
 	uint8_t lo_addr = (uint8_t)(base + x_ind);
 	uint8_t hi_addr = (uint8_t)(lo_addr + 1);
 
