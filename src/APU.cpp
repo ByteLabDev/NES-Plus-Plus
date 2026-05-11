@@ -37,7 +37,7 @@ void APU::hard_reset() {
 
 	total_cycles = 0;
 	frame_irq_pending = false;
-	frame_irq_disable = false;
+	frame_irq_disable = true;
 	is_5_step_mode = false;
 
 	high_pass_prev_sample = 0.0f;
@@ -167,6 +167,9 @@ bool APU::write(uint16_t addr, uint8_t data) {
 		case 0x4010:	// DMC - IRQ enable (I), loop (L), frequency (R)
 			dmc.irq_enabled = (data & 0x80);
 			dmc.loop = (data & 0x40);
+			if (!dmc.irq_enabled) {
+				dmc.irq_pending = false;
+			}
 
 			// Choose table based on the current region
 			if (nes->region == Common::Region::PAL) {
@@ -207,6 +210,7 @@ bool APU::write(uint16_t addr, uint8_t data) {
 			else {
 				dmc.bytes_remaining = 0;
 			}
+			dmc.irq_pending = false;
 			break;
 		case 0x4017:	// Frame Counter
 			frame_value = 0;
@@ -233,15 +237,13 @@ bool APU::write(uint16_t addr, uint8_t data) {
 bool APU::read(uint16_t addr, uint8_t& data) {
 	if (addr == 0x4015) {
 		data = 0;
-		if (pulse1.length_counter > 0)  data |= 0x01;
-		if (pulse2.length_counter > 0)  data |= 0x02;
-		if (triangle.length_counter > 0) data |= 0x04;
-		if (noise.length_counter > 0) data |= 0x08;
-		if (dmc.bytes_remaining > 0)    data |= 0x10; // Tell the game DMC is busy
-
-		if (frame_irq_pending) {
-			data |= 0x40;
-		}
+		if (pulse1.length_counter > 0)		data |= 0x01;
+		if (pulse2.length_counter > 0)		data |= 0x02;
+		if (triangle.length_counter > 0)	data |= 0x04;
+		if (noise.length_counter > 0)		data |= 0x08;
+		if (dmc.bytes_remaining > 0)		data |= 0x10; // Tell the game DMC is busy
+		if (frame_irq_pending)				data |= 0x40;
+		if (dmc.irq_pending)				data |= 0x80;
 
 		frame_irq_pending = false;
 		return true;
@@ -271,7 +273,7 @@ void APU::step() {
 	}
 
 	// Always signal the CPU if the flag is up
-	nes->cpu6502.set_irq_line(frame_irq_pending);
+	nes->cpu6502.set_irq_line(frame_irq_pending || dmc.irq_pending);
 }
 
 void APU::clock_frame_counter() {
@@ -315,26 +317,23 @@ void APU::clock_frame_counter() {
 }
 
 void APU::dmc_fetch_sample() {
-	// Only fetch if we have bytes left and the buffer is empty
 	if (dmc.bytes_remaining > 0 && !dmc_sample_buffer_full) {
-		// Read from the bus
 		dmc_sample_buffer = nes->bus.read(dmc.current_addr);
 		dmc_sample_buffer_full = true;
 
-		// Increment address with wrap-around logic
 		dmc.current_addr++;
-		if (dmc.current_addr == 0x0000) { // Wrap from $FFFF to $8000
-			dmc.current_addr = 0x8000;
-		}
+		if (dmc.current_addr == 0) dmc.current_addr = 0x8000;
 
 		dmc.bytes_remaining--;
+
 		if (dmc.bytes_remaining == 0) {
 			if (dmc.loop) {
 				dmc.current_addr = dmc.sample_start_addr;
 				dmc.bytes_remaining = dmc.sample_length;
 			}
 			else if (dmc.irq_enabled) {
-				// nes->cpu6502.trigger_irq(); // Trigger IRQ if implemented
+				// Trigger the IRQ
+				dmc.irq_pending = true;
 			}
 		}
 	}

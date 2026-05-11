@@ -251,6 +251,8 @@ class APU {
 			uint8_t  bits_remaining = 8; // How many bits left in shift_register (0-8)
 			bool     silent = true;      // If the sample buffer is empty
 
+			bool	irq_pending = false;
+
 			const uint16_t ntsc_rates[16] = {
 				428, 380, 340, 320, 286, 254, 226, 214, 190, 160, 142, 128, 106, 84, 72, 54
 			};
@@ -326,6 +328,9 @@ class APU {
 
 		float high_pass_prev_sample = 0.0f;
 		float high_pass_prev_out = 0.0f;
+		
+		uint8_t write_4017_delay = 0;
+		uint8_t pending_4017_data = 0;
 
 		// Interrupt control
 		bool is_5_step_mode = false;
